@@ -4,10 +4,10 @@
            [java.awt.event ActionListener]
            [java.util Random]))
 
-(def frames-per-second 15)
+(def frames-per-second 60)
 (def ticks-per-second (/ 1000 frames-per-second))
-(def particle-count 4)
-(def particle-size 60)
+(def particle-count 20)
+(def particle-size 5)
 (def initial-velocity 2) ;; px per tick
 (def gravitational-force 0.04)
 (def max-x (- 800 particle-size))
@@ -63,8 +63,17 @@
 (defn combination [n k]
   (safe-divide (factorial n) (* (factorial k) (factorial (- n k)))))
 
+(defn transpose [m]
+  (apply mapv vector m))
+
+(defn fill-start-with-nil [v n]
+  (vec (concat (vec (repeat (- n (count v)) nil)) v)))
+
+(defn fill-end-with-nil [v n]
+  (vec (concat v (vec (repeat (- n (count v)) nil)))))
+
 (defn get-pairwise-combinator-indexes [n]
-  (map (fn [idx] [idx (range (inc idx) n)]) (range n)))
+  (map (fn [idx] [idx (vec (range (inc idx) n))]) (range n)))
 
 (defn pairwise-combinator [vect func]
   (let [el (nth vect 0)
@@ -76,15 +85,18 @@
                   []))] result))
 
 (defn consolidate-pairwise-combinator-result [pwc-result n]
-  (let [all-but-last-res (mapv
-                          (fn [idx]
-                            (vec (take (- n 1 idx) (drop (+ (*  -0.5 idx idx) (* (- n 1.5) idx)) pwc-result))))
-                          (vec (range (dec n))))
-        last-res (vec (drop-last (mapv last all-but-last-res)))]
-    ;; (println "all-but-last-res>" all-but-last-res)
-    ;; (println "last-res>" last-res)
+  (let [res (fill-start-with-nil (mapv
+                                  (fn [idx]
+                                    (let [drop-from-prev-idx (+ (*  -0.5 idx idx) (* (- n 0.5) idx))
+                                          take-in-current-idx (- n 1 idx)]
+                                      (vec
+                                       (take take-in-current-idx
+                                             (drop drop-from-prev-idx
+                                                   pwc-result)))))
+                                  (vec (range n)))
+                                 n)]
 
-    (conj all-but-last-res last-res)))
+    (mapv (fn [v] (fill-start-with-nil v (dec n))) res)))
 
 (defn toggle-direction [dir] (if (= dir -) + -))
 
@@ -199,6 +211,34 @@
   (- 2 (apply list [1 2]))
 
   (pairwise-combinator [2 3 8 9 0] -) ;; So beautiful!
+  (def my-vec [2 3 8 9 0])
+  (def my-pwc (pairwise-combinator my-vec -))
+  my-pwc
+  (def conol-my-pwc (consolidate-pairwise-combinator-result my-pwc (count my-vec)))
+  conol-my-pwc
+
+  (def consol-my-pwc-matrix (mapv (fn [v] (fill-start-with-nil v (dec (count my-vec)))) conol-my-pwc))
+  consol-my-pwc-matrix
+
+  (transpose consol-my-pwc-matrix)
+  (concat [1 2 3] [4 5 6])
+
+  (def my-pwc-idxs (get-pairwise-combinator-indexes (count my-vec)))
+  my-pwc-idxs
+
+  (count my-vec)
+  (map-indexed (fn [idx itm] [idx itm]) my-vec)
+  (count my-pwc-idxs)
+  (count conol-my-pwc)
+  (vec (repeat (count my-vec) []))
+  (reduce (fn [acc [idx val]]
+            ;; {:idx idx :val val}
+            (update acc idx conj val)
+            (mapv (fn [idx2]) (range (count val))))
+          (vec (repeat (count my-vec) []))
+          conol-my-pwc)
+
+
   (combination 4 3)
 
   (find-point-of-contact [0 4] [4 4] 4)
@@ -266,6 +306,8 @@
    [[81.2036300463041 547.6372710200945] [86.2036300463041 552.6372710200945]]
    particle-size)
   (get-pairwise-combinator-indexes 5)
+
+  (def my-init)
   ;; (def test-trans-intersections (mapv find-intersection test-state-x-ys))
   ;; END
   )
@@ -322,19 +364,16 @@
         updated-next-state (if (not= (some identity intersection-data) nil)
                              (assoc next-state :colour Color/RED)
                              (assoc next-state :colour Color/WHITE))]
-    (if (and (= (:colour prev-state) Color/WHITE) (= (:colour updated-next-state) Color/RED))
-      (println (str "state-transition: " state-transition "intersection-data: " intersection-data)))
-    (if (and (= (:colour prev-state) Color/WHITE) (= (:colour updated-next-state) Color/RED))
-      (throw (Exception. "BMDEBUG")))
     [prev-state updated-next-state]))
 
 (defn apply-collisions [state-transition]
   (let [;; -----
         transition-coords (mapv get-x-y-from-state-transition state-transition)
         intersections (pairwise-combinator transition-coords find-boxlike-intersection)
-        consolidated-intersections (consolidate-pairwise-combinator-result intersections (count state-transition))]
-    (println "consolidated-intersections: " consolidated-intersections "\nstate-transition: " state-transition)
-    (mapv debug-paint-red-intersection state-transition consolidated-intersections)))
+        consolidated-intersections (consolidate-pairwise-combinator-result intersections (count state-transition))
+        transposed-consolidated-intersections (vec (concat [(repeat (count consolidated-intersections) nil)] (transpose consolidated-intersections)))
+        combined-consolidated-intersections (mapv (fn [ci tci] (vec (concat ci tci))) consolidated-intersections transposed-consolidated-intersections)]
+    (mapv debug-paint-red-intersection state-transition combined-consolidated-intersections)))
 
 (defn update-state [states]
   (->> states
@@ -358,7 +397,7 @@
     (.dispose f) ; Close the existing frame if it exists
     (reset! frame nil))  ; Reset the frame atom
   (let [panel (game-panel)
-        new-frame (doto (JFrame. (str "Java2Dd Game Example" initial-velocity))
+        new-frame (doto (JFrame. (str "Java2D Game Example" initial-velocity))
                     (.setContentPane panel)
                     (.setSize 800 640)
                     (.setDefaultCloseOperation JFrame/DISPOSE_ON_CLOSE)

@@ -2,7 +2,8 @@
   (:import [javax.swing JFrame JPanel Timer]
            [java.awt Graphics Graphics2D Color RenderingHints]
            [java.awt.event ActionListener]
-           [java.util Random]))
+           [java.util Random])
+  (:require [pelo.helpers :refer :all]))
 
 (def frames-per-second 60)
 (def ticks-per-second (/ 1000 frames-per-second))
@@ -47,56 +48,6 @@
 (defn bounce [pos distance boundary]
   (let [allowed-distance (- boundary pos)]
     (+ pos (- (* 2 allowed-distance) distance))))
-
-(defn degrees-from-y-x [y x] (- 360 (Math/toDegrees (Math/atan2 y x))))
-
-(defn safe-divide [x y]
-  (try
-    (/ x y)
-    (catch ArithmeticException e
-      nil)))
-
-(defn factorial [n] (reduce *' (range 1 (inc n))))
-
-;; n is the number to select from
-;; k is the size of the each unique group we make from n
-(defn combination [n k]
-  (safe-divide (factorial n) (* (factorial k) (factorial (- n k)))))
-
-(defn transpose [m]
-  (apply mapv vector m))
-
-(defn fill-start-with-nil [v n]
-  (vec (concat (vec (repeat (- n (count v)) nil)) v)))
-
-(defn fill-end-with-nil [v n]
-  (vec (concat v (vec (repeat (- n (count v)) nil)))))
-
-(defn get-pairwise-combinator-indexes [n]
-  (map (fn [idx] [idx (vec (range (inc idx) n))]) (range n)))
-
-(defn pairwise-combinator [vect func]
-  (let [el (nth vect 0)
-        rest-vect-slice (drop 1 vect)
-        result (into
-                (mapv #(func el %) rest-vect-slice)
-                (if (> (count vect) 2)
-                  (pairwise-combinator rest-vect-slice func)
-                  []))] result))
-
-(defn consolidate-pairwise-combinator-result [pwc-result n]
-  (let [res (fill-start-with-nil (mapv
-                                  (fn [idx]
-                                    (let [drop-from-prev-idx (+ (*  -0.5 idx idx) (* (- n 0.5) idx))
-                                          take-in-current-idx (- n 1 idx)]
-                                      (vec
-                                       (take take-in-current-idx
-                                             (drop drop-from-prev-idx
-                                                   pwc-result)))))
-                                  (vec (range n)))
-                                 n)]
-
-    (mapv (fn [v] (fill-start-with-nil v (dec n))) res)))
 
 (defn toggle-direction [dir] (if (= dir -) + -))
 
@@ -176,8 +127,6 @@
       {:x (get-middle-of-two-numbers (nth centre-one 0) (nth centre-two 0))
        :y (get-middle-of-two-numbers (nth centre-one 1) (nth centre-two 1))}
       nil)))
-
-
 
 ;; quite naive but can be improved on in future:
 ;; - objects that cross paths in one transition may not collide due to different velocities
@@ -277,6 +226,8 @@
 
   (test-stuff)
   (def test-consolidated-data [[nil nil nil nil] [nil {:x 291/2, :y 107.03999999999999} {:x 145, :y 91.53999999999999}] [{:x 145, :y 91.53999999999999} nil] [nil] [nil {:x 145, :y 91.53999999999999} nil]])
+  (def test-consolidated-row [nil nil {:x 291/2, :y 107.03999999999999} {:x 145, :y 91.53999999999999} {:x 291/2, :y 107.03999999999999} {:x 145, :y 91.53999999999999} nil])
+  (vec (distinct test-consolidated-row))
   (mapv #(not= (some identity %) nil) test-consolidated-data)
   (not= (some identity [nil nil nil nil]) nil)
   (some identity test-consolidated-data)
@@ -306,7 +257,6 @@
    [[81.2036300463041 547.6372710200945] [86.2036300463041 552.6372710200945]]
    particle-size)
   (get-pairwise-combinator-indexes 5)
-
   (def my-init)
   ;; (def test-trans-intersections (mapv find-intersection test-state-x-ys))
   ;; END
@@ -366,6 +316,16 @@
                              (assoc next-state :colour Color/WHITE))]
     [prev-state updated-next-state]))
 
+(defn apply-collision-bounce [state-transition intersection-data]
+  (let [[prev-state next-state] state-transition
+        collision-points (vec (distinct (filterv #(not= nil %) intersection-data)))
+        new-state (reduce
+                   (fn [state]
+                    ;;  would be nice to have xy velocities to be in intersection-data no?🫣
+                     )
+                   next-state
+                   collision-points)]))
+
 (defn apply-collisions [state-transition]
   (let [;; -----
         transition-coords (mapv get-x-y-from-state-transition state-transition)
@@ -412,7 +372,4 @@
 (defn start-game []
   (create-frame))
 
-(comment)
-
-  ;; end
   

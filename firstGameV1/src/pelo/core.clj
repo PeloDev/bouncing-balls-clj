@@ -5,10 +5,10 @@
            [java.util Random])
   (:require [pelo.helpers :refer :all]))
 
-(def frames-per-second 60)
+(def frames-per-second 30)
 (def ticks-per-second (/ 1000 frames-per-second))
-(def particle-count 20)
-(def particle-size 5)
+(def particle-count 8)
+(def particle-size 24)
 (def initial-velocity 2) ;; px per tick
 (def gravitational-force 0.04)
 (def max-x (- 800 particle-size))
@@ -103,6 +103,24 @@
           p-intersection
           nil)))))
 
+(defn determine-is-collision [line-one line-two]
+  (let [p-intersection (find-intersection line-one line-two)]
+    (if (nil? p-intersection)
+      false
+      (let [margin-of-error (/ particle-size 1)
+            [line-one-start line-one-end] line-one
+            [line-two-start line-two-end] line-two
+            distance-line-one (distance-between-points line-one-start line-one-end)
+            distance-line-two (distance-between-points line-two-start line-two-end)
+            distance-one-p (distance-between-points line-one-start (vec (vals p-intersection)))
+            distance-two-p (distance-between-points line-two-start (vec (vals p-intersection)))
+            d-one-p-ratio (/ distance-one-p distance-line-one)
+            d-two-p-ratio (/ distance-two-p distance-line-two)
+            d-two-p-ratio-margin-err (/ (+ distance-two-p margin-of-error) distance-line-two)]
+        (if (and (>= d-one-p-ratio d-two-p-ratio) (<= d-one-p-ratio d-two-p-ratio-margin-err))
+          true
+          false)))))
+
 (defn get-bottom-right-point-from-top-left [[x y] p-size]
   [(+ p-size x) (+ p-size y)])
 
@@ -143,6 +161,18 @@
                                (find-collision br-line-one br-line-two)]))
       point-of-contact)))
 
+(defn determine-is-collision-between-paths [tl-line-one tl-line-two]
+  (let [br-line-one (mapv (fn [tl-point] (get-bottom-right-point-from-top-left tl-point particle-size)) tl-line-one)
+        br-line-two (mapv (fn [tl-point] (get-bottom-right-point-from-top-left tl-point particle-size)) tl-line-two)
+        point-of-contact (find-point-of-contact (last tl-line-one) (last tl-line-two) particle-size)]
+    (if (nil? point-of-contact)
+      (= true
+         (some true? [(determine-is-collision tl-line-one tl-line-two)
+                      (determine-is-collision tl-line-one br-line-two)
+                      (determine-is-collision br-line-one tl-line-two)
+                      (determine-is-collision br-line-one br-line-two)]))
+      true)))
+
 
 (comment
   (def bmtemp (apply list (mapv first [[5 1] [2 3]])))
@@ -150,30 +180,50 @@
   (apply > (interpose 10 bmtemp))
   (apply min  bmtemp)
 
+  (defn test-my-fn []
+    (let [my-fn (fn [n] (* n n 2))]
+      (my-fn 8)))
+
+  (test-my-fn)
+
+
+  (transpose [[1 2] [3 4] [5 6]])
+  (transpose [[1 2 3 4 5 6]])
+
   (def line-1 [[269 315] [270 317.04]])
   (def line-2 [[123 328] [124 330.04]])
   (find-intersection line-1 line-2)
   (factorial 5)
-  (combination 2 2)
+  (combination 5 2)
   (mapv + [11 5 2])
 
   (- 2 (apply list [1 2]))
 
-  (pairwise-combinator [2 3 8 9 0] -) ;; So beautiful!
+  (pairwise-combination [2 3 8 9 0] -) ;; So beautiful!
+  (indexed-pairwise-combination [2 3 8 9 0] - 0)
+
   (def my-vec [2 3 8 9 0])
-  (def my-pwc (pairwise-combinator my-vec -))
+  (def my-pwc (pairwise-combination my-vec -))
   my-pwc
-  (def conol-my-pwc (consolidate-pairwise-combinator-result my-pwc (count my-vec)))
+  (def conol-my-pwc (consolidate-pairwise-combination-result my-pwc (count my-vec)))
   conol-my-pwc
 
   (def consol-my-pwc-matrix (mapv (fn [v] (fill-start-with-nil v (dec (count my-vec)))) conol-my-pwc))
   consol-my-pwc-matrix
 
+  (def my-idxd-pwc (indexed-pairwise-combination my-vec - 0))
+  my-idxd-pwc
+  (def conol-my-idxd-pwc (consolidate-indexed-pairwise-combination-result my-idxd-pwc (count my-vec)))
+  conol-my-idxd-pwc
+
   (transpose consol-my-pwc-matrix)
   (concat [1 2 3] [4 5 6])
 
-  (def my-pwc-idxs (get-pairwise-combinator-indexes (count my-vec)))
+  (def my-pwc-idxs (get-pairwise-combination-indexes (count my-vec)))
   my-pwc-idxs
+
+  (contains? [0 2] 2) ;; https://clojuredocs.org/clojure.core/contains_q
+  (.contains [0 2] 2) ;; Java one works as expected
 
   (count my-vec)
   (map-indexed (fn [idx itm] [idx itm]) my-vec)
@@ -206,8 +256,8 @@
 
   (defn test-stuff [] (let [test-state      (vec (map
                                                   (fn [_]
-                                                    {:x (random-value 200)
-                                                     :y (random-value 200)
+                                                    {:x (random-value 30)
+                                                     :y (random-value 30)
                                                      :angle (random-value 360)
                                                      :x-velocity (random-pos-neg 8)
                                                      :y-velocity (random-pos-neg 8)
@@ -216,15 +266,22 @@
                             test-state-transition (->> test-state
                                                        (mapv apply-move))
                             test-state-x-ys (mapv get-x-y-from-state-transition test-state-transition)
-                            test-intersections (pairwise-combinator test-state-x-ys find-boxlike-intersection)
+                            ;; test-intersections (indexed-pairwise-combination test-state-x-ys find-boxlike-intersection 0)
+                            test-intersections (indexed-pairwise-combination test-state-x-ys determine-is-collision-between-paths 0)
+                            consolidated-test-intersections (consolidate-indexed-pairwise-combination-result test-intersections (count test-state-transition))
+                            consolidated-test-intersections-matrix (get-indexed-pairwise-combination-matrix test-intersections (count test-state-transition))
                             test-collisions (apply-collisions test-state-transition)]
                         (println (str "test-state" test-state))
                         (println (str  "test-state-transition" test-state-transition))
                         (println (str "test-state-x-ys" (count test-state-x-ys) test-state-x-ys))
                         (println (str "test-intersections" (count test-intersections) test-intersections))
-                        test-collisions))
+                        ;; (println (str "test-intersections-bool" (count test-intersections-bool) test-intersections-bool))
+                        (println (str "consolidated-test-intersections" (count consolidated-test-intersections) consolidated-test-intersections))
+                        (println (str "consolidated-test-intersections-matrix" (count consolidated-test-intersections-matrix) consolidated-test-intersections-matrix))
+                        consolidated-test-intersections-matrix))
 
   (test-stuff)
+  (some true? [false false false])
   (def test-consolidated-data [[nil nil nil nil] [nil {:x 291/2, :y 107.03999999999999} {:x 145, :y 91.53999999999999}] [{:x 145, :y 91.53999999999999} nil] [nil] [nil {:x 145, :y 91.53999999999999} nil]])
   (def test-consolidated-row [nil nil {:x 291/2, :y 107.03999999999999} {:x 145, :y 91.53999999999999} {:x 291/2, :y 107.03999999999999} {:x 145, :y 91.53999999999999} nil])
   (vec (distinct test-consolidated-row))
@@ -256,8 +313,11 @@
    [[386.9021130325903 243.6580339887499] [391.9021130325903 248.6580339887499]]
    [[81.2036300463041 547.6372710200945] [86.2036300463041 552.6372710200945]]
    particle-size)
-  (get-pairwise-combinator-indexes 5)
+  (get-pairwise-combination-indexes 5)
   (def my-init)
+  (def my-map {:a 3 :b 4 :c "4"})
+  (:a my-map)
+  (contains? [1 2 3 4] 2)
   ;; (def test-trans-intersections (mapv find-intersection test-state-x-ys))
   ;; END
   )
@@ -272,7 +332,7 @@
                             y-velocity) gravitational-force)
         new-x (+ x new-x-velocity)
         new-y (+ y new-y-velocity)
-        next-state (assoc state :x new-x :y new-y :y-velocity new-y-velocity) ;; TODO: use new-x-velocity
+        next-state (assoc state :x new-x :y new-y :x-velocity new-x-velocity :y-velocity new-y-velocity) ;; TODO: use new-x-velocity
         ]
     ;; (println (str "Change in V" (- new-y-velocity (if (nil? y-velocity) 0 y-velocity))))
     ;; [state {:x new-x :y new-y :angle angle :x-velocity x-velocity :y-velocity new-y-velocity}]
@@ -301,7 +361,8 @@
                      (max (bounce old-y dy min-y) (+ min-y 1))
                      new-y))
         bounce-angle (if is-x-bounce (- 180 new-angle) (if is-y-bounce (- 360 new-angle) new-angle))
-        bounce-x-velocity (if (and is-x-bounce (not= nil new-x-velocity)) (- new-x-velocity bounce-velocity-loss) new-x-velocity)
+        ;; bounce-x-velocity (if (and is-x-bounce (not= nil new-x-velocity)) (- new-x-velocity bounce-velocity-loss) new-x-velocity)
+        bounce-x-velocity (if is-x-bounce (+ (- 0 new-x-velocity) bounce-velocity-loss) new-x-velocity)
         bounce-y-velocity (if is-y-bounce (+ (- 0 new-y-velocity) bounce-velocity-loss) new-y-velocity)
         next-state (assoc new-state :x bounce-x :y bounce-y :x-velocity bounce-x-velocity :y-velocity bounce-y-velocity :angle bounce-angle)]
         ;; .....
@@ -316,24 +377,69 @@
                              (assoc next-state :colour Color/WHITE))]
     [prev-state updated-next-state]))
 
-(defn apply-collision-bounce [state-transition intersection-data]
-  (let [[prev-state next-state] state-transition
-        collision-points (vec (distinct (filterv #(not= nil %) intersection-data)))
-        new-state (reduce
-                   (fn [state]
-                    ;;  would be nice to have xy velocities to be in intersection-data no?🫣
-                     )
-                   next-state
-                   collision-points)]))
-
 (defn apply-collisions [state-transition]
   (let [;; -----
+        [prev-states next-states] (transpose state-transition)
         transition-coords (mapv get-x-y-from-state-transition state-transition)
-        intersections (pairwise-combinator transition-coords find-boxlike-intersection)
-        consolidated-intersections (consolidate-pairwise-combinator-result intersections (count state-transition))
-        transposed-consolidated-intersections (vec (concat [(repeat (count consolidated-intersections) nil)] (transpose consolidated-intersections)))
-        combined-consolidated-intersections (mapv (fn [ci tci] (vec (concat ci tci))) consolidated-intersections transposed-consolidated-intersections)]
-    (mapv debug-paint-red-intersection state-transition combined-consolidated-intersections)))
+        indexed-intersections (indexed-pairwise-combination transition-coords determine-is-collision-between-paths 0)
+        collision-index-matrix (get-indexed-pairwise-combination-matrix indexed-intersections (count state-transition))
+        new-state (mapv
+                   (fn [state-row collision-indexes]
+                     (if (empty? collision-indexes)
+                       state-row
+                       (let [colliding-states-data (mapv (fn [idx]
+                                                           (select-keys (nth next-states idx) [:x :y :x-velocity :y-velocity]))
+                                                         collision-indexes)
+                             number-of-collisions (count collision-indexes)
+                             avg-colliding-state (reduce
+                                                  (fn [avg-state idx]
+                                                    ;; (println "avg-state: " avg-state ", idx: " idx)
+                                                    (let [state-row-at-idx (nth next-states idx)
+                                                          avg-step (fn [k d]
+                                                                     (/  (k d) number-of-collisions))]
+                                                      (assoc avg-state
+                                                             :x (+ (avg-step :x avg-state)
+                                                                   (avg-step :x state-row-at-idx))
+                                                             :y (+ (avg-step :y avg-state)
+                                                                   (avg-step :y state-row-at-idx))
+                                                             :x-velocity (+
+                                                                          (avg-step :x-velocity avg-state)
+                                                                          (avg-step :x-velocity state-row-at-idx))
+                                                             :y-velocity (+
+                                                                          (avg-step :y-velocity avg-state)
+                                                                          (avg-step :y-velocity state-row-at-idx)))))
+                                                  {:x 0 :y 0 :x-velocity 0 :y-velocity 0}
+                                                  collision-indexes)
+                             calc-new-pos (fn [k-pos k-vel ref other]
+                                            ;; (println "k: " k ", ref: " ref ", other: " other)
+                                            (let [ref-future-pos (+ (k-pos ref) 0);; TODO: replace 0 with `(k-vel ref)` or revert
+                                                  other-future-pos (+ (k-pos other) 0);; TODO: replace 0 with `(k-vel other)` or revert
+                                                  diff-future-pos (- ref-future-pos other-future-pos)
+                                                  abs-diff-future-pos (Math/abs diff-future-pos)]
+                                              (if (>= abs-diff-future-pos 5)
+                                                ref-future-pos
+                                                (+ ref-future-pos (* (/ diff-future-pos abs-diff-future-pos) (- particle-size abs-diff-future-pos))))))]
+                         (assoc state-row
+                                :x (calc-new-pos :x :x-velocity state-row avg-colliding-state)
+                                :y (calc-new-pos :y :y-velocity state-row avg-colliding-state)
+                                :x-velocity (- (+ 0 (:x-velocity avg-colliding-state)) bounce-velocity-loss);; TODO: replace 0 with `(:x-velocity state-row)` or revert
+                                :y-velocity (- (+ 0 (:y-velocity avg-colliding-state)) bounce-velocity-loss);; TODO: replace 0 with `(:y-velocity state-row)` or revert
+                                                                      ;; :x-velocity (-
+                                                                      ;;              (average-mean
+                                                                      ;;               (mapv (fn [idx]
+                                                                      ;;                       (:x-velocity (nth next-states idx)))
+                                                                      ;;                     collision-indexes))
+                                                                      ;;              bounce-velocity-loss)
+                                                                      ;; :y-velocity (-
+                                                                      ;;              (average-mean
+                                                                      ;;               (mapv (fn [idx]
+                                                                      ;;                       (:y-velocity (nth next-states idx)))
+                                                                      ;;                     collision-indexes))
+                                                                      ;;              bounce-velocity-loss)
+                                ))))
+                   next-states
+                   collision-index-matrix)]
+    (transpose [prev-states new-state])))
 
 (defn update-state [states]
   (->> states

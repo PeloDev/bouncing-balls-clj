@@ -8,6 +8,9 @@
     (catch ArithmeticException e
       nil)))
 
+(defn average-mean [coll]
+  (/ (reduce + coll) (count coll)))
+
 
 ;; n is the number to select from
 ;; k is the size of the each unique group we make from n
@@ -29,19 +32,32 @@
   (vec (concat v (vec (repeat (- n (count v)) nil)))))
 
 ;; ===================== Procedures =====================
-(defn get-pairwise-combinator-indexes [n]
+(defn get-pairwise-combination-indexes [n]
   (map (fn [idx] [idx (vec (range (inc idx) n))]) (range n)))
 
-(defn pairwise-combinator [vect func]
+(defn pairwise-combination [vect func]
   (let [el (nth vect 0)
         rest-vect-slice (drop 1 vect)
         result (into
                 (mapv #(func el %) rest-vect-slice)
                 (if (> (count vect) 2)
-                  (pairwise-combinator rest-vect-slice func)
+                  (pairwise-combination rest-vect-slice func)
                   []))] result))
 
-(defn consolidate-pairwise-combinator-result [pwc-result n]
+(defn indexed-pairwise-combination [vect func & [idx]]
+  (let [el (nth vect idx)
+        rest-vect-slice (drop (inc idx) vect)
+        result (into
+                (map-indexed (fn [i itm]
+                            ;;    [[idx (+ i idx)] (func el itm)]) 
+                               {:idxs [idx (+ idx i 1)] :vals (func el itm)})
+                             rest-vect-slice)
+                (if (>= (count rest-vect-slice) 2)
+                  (indexed-pairwise-combination vect func (inc idx))
+                  []))]
+    result))
+
+(defn consolidate-pairwise-combination-result [pwc-result n]
   (let [res (fill-start-with-nil (mapv
                                   (fn [idx]
                                     (let [drop-from-prev-idx (+ (*  -0.5 idx idx) (* (- n 0.5) idx))
@@ -54,5 +70,40 @@
                                  n)]
 
     (mapv (fn [v] (fill-start-with-nil v (dec n))) res)))
+
+(defn consolidate-indexed-pairwise-combination-result [pwc-result n]
+  (let [res
+        (fill-start-with-nil (mapv
+                              (fn [idx]
+                                (filter (fn [data]
+                                          (let [indexes (:idxs data)
+                                                contains-idx (.contains indexes idx)]
+                                            contains-idx)) pwc-result))
+                              (vec (range n)))
+                             n)]
+
+    (mapv (fn [v] (fill-start-with-nil v (dec n))) res)))
+
+(defn get-indexed-pairwise-combination-matrix [pwc-result n]
+  (let [res
+        (mapv
+         (fn [idx]
+           (mapv (fn [data]
+                   (first (filter #(not= idx %) (:idxs data))))
+                 (filter (fn [data]
+                           (let [indexes (:idxs data)
+                                 contains-idx (.contains indexes idx)]
+                             (and contains-idx (true? (:vals data))))) pwc-result)))
+         (vec (range n)))]
+
+    res))
+
+(defn get-index-map-for-indexed-pairwise-combination-result [pwc-result n]
+  (mapv
+   (fn [idx]
+     (map :idx (filter
+                (fn [data] (true? (:vals data)))
+                pwc-result)))
+   (vec (range n))))
 
 

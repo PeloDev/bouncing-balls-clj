@@ -187,6 +187,22 @@
                                (find-collision br-line-one br-line-two)]))
       point-of-contact)))
 
+(defn find-collision-between-two-paths [tl-line-one tl-line-two]
+  ;; Better way of finding collisions for balls of the same radius:
+  ;; ================================================================
+  ;; 1. Get the center line of each ball's path
+  ;; 2. Determine if the distance of the lines are ever < particle size
+  ;; 3a. If the distances are never less than particle size, return nil
+  ;; 3b. If the distances are at some point less than particle size, proceed to step 4
+  ;; * Remember to also check if the lines are converging!
+  ;; 4. Determine if the balls reach the points where the distances are less than particle size at the same time
+  ;; 5a. if 4 is false then return nil
+  ;; 5b. if 4 is true proceed to 6
+  ;; 6. Find the points on each line where the distance is exactly equal to particle size
+  ;; 7. Take the results from 6 and calculate the point of collision, it should be the midpoint of point at line 1 and point at line 2 
+  ;; 8. Return result of 7, as well as maybe some identifying information so we know which ball is which later on.
+  )
+
 (defn determine-is-collision-between-paths [tl-line-one tl-line-two]
   (let [[tl-l1-start tl-l1-end] tl-line-one
         [tl-l2-start tl-l2-end] tl-line-two

@@ -17,7 +17,7 @@
 (def min-y 0)
 (defn random-value [upper-bound] (.nextInt (Random.) upper-bound))
 (defn random-pos-neg [x] (if (= 1 (random-value 2)) x (* x -1)))
-(def bounce-velocity-loss 0.1)
+(def bounce-velocity-loss 0.02)
 
 (def frame (atom nil)) ; Atom to store the frame
 
@@ -56,8 +56,8 @@
   (let [m (/ (- y2 y1) (- x2 x1))
         c (- y2 (* m x2))] (fn [x] (+ (* x m) c))))
 
-(defn list-contains-value [val list]
-  (not= nil (some #(= val %) list)))
+(defn vec-contains-value [val v]
+  (not= nil (some #(= val %) v)))
 
 (defn get-line-vars [[[x1 y1] [x2 y2]]]
   (let [m (safe-divide (- y2 y1) (- x2 x1))
@@ -76,7 +76,7 @@
 (defn find-intersection [line-one line-two]
   (let [{m1 :m c1 :c} (get-line-vars line-one)
         {m2 :m c2 :c} (get-line-vars line-two)
-        vars-list-has-nil (list-contains-value nil '(m1 m2 c1 c2))
+        vars-list-has-nil (vec-contains-value nil [m1 m2 c1 c2])
         x-intercept (if vars-list-has-nil nil (safe-divide (- c2 c1) (- m1 m2)))
         y-intercept (if (nil? x-intercept) nil ((get-linear-function line-one) x-intercept))
         line-one-xs-list (apply list (mapv first line-one))
@@ -165,8 +165,7 @@
         distance-between-center-starts (distance-between-points start-centre-one start-centre-two)
         distance-between-center-ends (distance-between-points end-centre-one end-centre-two)
         are-boxes-touching (<= distance-between-center-ends p-size)
-        are-boxes-converging (< (Math/abs distance-between-center-ends) (Math/abs distance-between-center-starts))
-        ]
+        are-boxes-converging (< (Math/abs distance-between-center-ends) (Math/abs distance-between-center-starts))]
     (if (and are-boxes-touching are-boxes-converging)
       {:x (get-middle-of-two-numbers (nth end-centre-one 0) (nth end-centre-two 0))
        :y (get-middle-of-two-numbers (nth end-centre-one 1) (nth end-centre-two 1))}
@@ -201,6 +200,7 @@
   ;; 6. Find the points on each line where the distance is exactly equal to particle size
   ;; 7. Take the results from 6 and calculate the point of collision, it should be the midpoint of point at line 1 and point at line 2 
   ;; 8. Return result of 7, as well as maybe some identifying information so we know which ball is which later on.
+  ;; * Actually on point 8 we need to know the line between centers at collision point. The velocity exchange should be applied along this line using trig.
   )
 
 (defn determine-is-collision-between-paths [tl-line-one tl-line-two]
@@ -226,6 +226,14 @@
   (interpose 3 bmtemp)
   (apply > (interpose 10 bmtemp))
   (apply min  bmtemp)
+
+  (move-towards-zero -10 -20)
+  (defn test-list-contains-nil []
+    (let [c1 nil
+          c2 482.45260794893187
+          m1 nil
+          m2 0.14739205107713113] (vec-contains-value nil [m1 m2 c1 c2])))
+  (test-list-contains-nil)
 
   (defn test-my-fn []
     (let [my-fn (fn [n] (* n n 2))]
@@ -409,8 +417,8 @@
                      new-y))
         bounce-angle (if is-x-bounce (- 180 new-angle) (if is-y-bounce (- 360 new-angle) new-angle))
         ;; bounce-x-velocity (if (and is-x-bounce (not= nil new-x-velocity)) (- new-x-velocity bounce-velocity-loss) new-x-velocity)
-        bounce-x-velocity (if is-x-bounce (+ (- 0 new-x-velocity) bounce-velocity-loss) new-x-velocity)
-        bounce-y-velocity (if is-y-bounce (+ (- 0 new-y-velocity) bounce-velocity-loss) new-y-velocity)
+        bounce-x-velocity (if is-x-bounce (move-towards-zero (- 0 new-x-velocity) bounce-velocity-loss) new-x-velocity)
+        bounce-y-velocity (if is-y-bounce (move-towards-zero (- 0 new-y-velocity) bounce-velocity-loss) new-y-velocity)
         next-state (assoc new-state :x bounce-x :y bounce-y :x-velocity bounce-x-velocity :y-velocity bounce-y-velocity :angle bounce-angle)]
         ;; .....
 
@@ -469,8 +477,8 @@
                          (assoc state-row
                                 ;; :x (calc-new-pos :x :x-velocity state-row avg-colliding-state)
                                 ;; :y (calc-new-pos :y :y-velocity state-row avg-colliding-state)
-                                :x-velocity (- (+ 0 (:x-velocity avg-colliding-state)) bounce-velocity-loss);; TODO: replace 0 with `(:x-velocity state-row)` or revert
-                                :y-velocity (- (+ 0 (:y-velocity avg-colliding-state)) bounce-velocity-loss);; TODO: replace 0 with `(:y-velocity state-row)` or revert
+                                :x-velocity (move-towards-zero (+ 0 (:x-velocity avg-colliding-state)) bounce-velocity-loss);; TODO: replace 0 with `(:x-velocity state-row)` or revert
+                                :y-velocity (move-towards-zero (+ 0 (:y-velocity avg-colliding-state)) bounce-velocity-loss);; TODO: replace 0 with `(:y-velocity state-row)` or revert
                                 :ghost-frames (+ (:ghost-frames state-row) 16)))))
                    next-states
                    collision-index-matrix)]

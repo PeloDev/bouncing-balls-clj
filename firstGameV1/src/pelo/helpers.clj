@@ -11,6 +11,14 @@
 (defn average-mean [coll]
   (/ (reduce + coll) (count coll)))
 
+(defn move-towards-zero [num mv]
+  (if (= (int num) 0)
+    0
+    (let [abs-num (Math/abs num)
+          dir (/ num abs-num)
+          abs-mv (Math/abs mv)
+          abs-diff (- abs-num abs-mv)] (* dir (max abs-diff 0)))))
+
 
 ;; n is the number to select from
 ;; k is the size of the each unique group we make from n

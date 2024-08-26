@@ -93,15 +93,15 @@
         {m1 :m c1 :c} (get-line-vars line-one)
         {m2 :m c2 :c} (get-line-vars line-two)
         m1-is-infinity (= m1 Double/POSITIVE_INFINITY)
-        m2-is-infinity (= m2 Double/POSITIVE_INFINITY) 
+        m2-is-infinity (= m2 Double/POSITIVE_INFINITY)
         x-intercept (if m1-is-infinity
                       (nth (nth line-one 0) 0)
                       (if m2-is-infinity
                         (nth (nth line-two 0) 0)
                         (safe-divide (- (+ c2 r) c1) (- m1 m2))))
         ;; y-intercept (if (nil? x-intercept) nil ((get-linear-function line-one) x-intercept))
-        y-intercept (if m1-is-infinity 
-                      (if m2-is-infinity 
+        y-intercept (if m1-is-infinity
+                      (if m2-is-infinity
                         (average-mean (into (into (mapv #(last %) line-one)) (into (mapv #(last %) line-two))))
                         ((get-linear-function line-two) x-intercept))
                       ((get-linear-function line-one) x-intercept))
@@ -229,6 +229,16 @@
                                (find-collision br-line-one br-line-two)]))
       point-of-contact)))
 
+(defn get-n-intervals-along-line [n line]
+  (let [[[x-start y-start] [x-end y-end]] line
+        dx (- x-end x-start)
+        dy (- y-end y-start)
+        x-interval (/ dx n)
+        y-interval (/ dy n)
+        x-range (range x-start (+ x-end x-interval) x-interval)
+        y-range (range y-start (+ y-end y-interval) y-interval)] 
+    (mapv vector x-range y-range)))
+
 (defn find-collision-between-two-paths [tl-line-one tl-line-two]
   ;; Better way of finding collisions for balls of the same radius:
   ;; ================================================================
@@ -244,46 +254,74 @@
   ;; 7. Take the results from 6 and calculate the point of collision, it should be the midpoint of point at line 1 and point at line 2 
   ;; 8. Return result of 7, as well as maybe some identifying information so we know which ball is which later on.
   ;; * Actually on point 8 we need to know the line between centers at collision point. The velocity exchange should be applied along this line using trig.
-  (let [half-p-size (/ particle-size 2)
+  (let [;; half-p-size (/ particle-size 2)
         center-l1 (mapv (fn [tl-point] (get-center-point-from-top-left tl-point particle-size)) tl-line-one)
         center-l2 (mapv (fn [tl-point] (get-center-point-from-top-left tl-point particle-size)) tl-line-two)
-        extended-center-l1 [(find-point-of-line-extension (reverse center-l1)  half-p-size) (find-point-of-line-extension center-l1  half-p-size)]
-        extended-center-l2 [(find-point-of-line-extension (reverse center-l2)  half-p-size) (find-point-of-line-extension center-l2  half-p-size)]
-        intersection-point (find-d-intersection center-l1 center-l2)
-        collision-point (find-intersection extended-center-l1 extended-center-l2 (* particle-size 1))]
+        [center-l1-start center-l1-end] center-l1
+        [center-l2-start center-l2-end] center-l2
+        distance-between-center-starts (distance-between-points center-l1-start center-l2-start)
+        distance-between-center-ends (distance-between-points center-l1-end center-l2-end)
+        are-boxes-converging (< (Math/abs distance-between-center-ends) (Math/abs distance-between-center-starts))
+        ;; extended-center-l1 [(find-point-of-line-extension (reverse center-l1)  half-p-size) (find-point-of-line-extension center-l1  half-p-size)]
+        ;; extended-center-l2 [(find-point-of-line-extension (reverse center-l2)  half-p-size) (find-point-of-line-extension center-l2  half-p-size)]
+        ;; intersection-point-map (find-d-intersection center-l1 center-l2)
+        intersection-point-map (find-intersection center-l1 center-l2)
+        ;; collision-point (find-intersection center-l1 center-l2 (* particle-size 1))
+        ]
     ;; (if (and (not= intersection-point nil) (not= collision-point nil))
     ;;   (println "intersection-point: " intersection-point ", collision-point: " collision-point);;
     ;; (if (= 0 (mod (quot (now-unix) 100) 50))
     ;;   (println "collision-point: " collision-point ", intersection-point: " intersection-point ", centerl1: " center-l1 ", centerl2: " center-l2))
-    (if (or (nil? collision-point) (nil? intersection-point))
+    (if (or (not are-boxes-converging) (nil? intersection-point-map))
       nil
-      (let [[l1-start l1-end] center-l1
-            [l2-start l2-end] center-l2
-            dl1 (distance-between-points l1-start l1-end)
-            dl2 (distance-between-points l2-start l2-end)
-            dil1 (distance-between-points l1-start (vec (vals intersection-point)))
-            dil2 (distance-between-points l2-start (vec (vals intersection-point)))
-            i-radius half-p-size
-            time-to-enter-collision-range-l1 (/ (- dil1 i-radius) dl1)
-            time-to-exit-collision-range-l1 (/ (+ dil1 i-radius) dl1)
-            time-to-enter-collision-range-l2 (/ (- dil2 i-radius) dl2)
-            time-to-exit-collision-range-l2 (/ (+ dil2 i-radius) dl2)
-            collides-in-time (or
-                              (< time-to-enter-collision-range-l1 time-to-enter-collision-range-l2 time-to-exit-collision-range-l1)
-                              (< time-to-enter-collision-range-l2 time-to-enter-collision-range-l1 time-to-exit-collision-range-l2)
-                              (< time-to-enter-collision-range-l1 time-to-exit-collision-range-l2 time-to-exit-collision-range-l1)
-                              (< time-to-enter-collision-range-l2 time-to-exit-collision-range-l1 time-to-exit-collision-range-l2))
+      (let [intersection-point (vec (vals intersection-point-map))
+            point-of-least-distance-1 (if (nil? intersection-point) center-l1-end intersection-point)
+            point-of-least-distance-2 (if (nil? intersection-point) center-l2-end intersection-point)
+            line-1-intervals (get-n-intervals-along-line particle-size [point-of-least-distance-1 (find-point-of-line-extension [center-l1-start point-of-least-distance-1] (- particle-size))])
+            line-2-intervals (get-n-intervals-along-line particle-size [point-of-least-distance-2 (find-point-of-line-extension [center-l2-start point-of-least-distance-2] (- particle-size))])
+            interval-distances (mapv
+                                (fn [p1 p2 idx]
+                                  {:d (distance-between-points p1 p2) :i idx})
+                                line-1-intervals
+                                line-2-intervals
+                                (range (inc particle-size)))
+            collision-point-candidate (reduce (fn [closest-d-map d-map]
+                                                (if (<
+                                                     (Math/abs (- particle-size (:d d-map)))
+                                                     (Math/abs (- particle-size (:d closest-d-map))))
+                                                  d-map
+                                                  closest-d-map))
+                                              {:i -1 :d Double/POSITIVE_INFINITY}
+                                              interval-distances)
+
+            ;; [l1-start l1-end] center-l1
+            ;; [l2-start l2-end] center-l2
+            ;; dl1 (distance-between-points l1-start l1-end)
+            ;; dl2 (distance-between-points l2-start l2-end)
+            ;; dil1 (distance-between-points l1-start (vec (vals intersection-point)))
+            ;; dil2 (distance-between-points l2-start (vec (vals intersection-point)))
+            ;; i-radius half-p-size
+            ;; time-to-enter-collision-range-l1 (/ (- dil1 i-radius) dl1)
+            ;; time-to-exit-collision-range-l1 (/ (+ dil1 i-radius) dl1)
+            ;; time-to-enter-collision-range-l2 (/ (- dil2 i-radius) dl2)
+            ;; time-to-exit-collision-range-l2 (/ (+ dil2 i-radius) dl2)
+            ;; collides-in-time (or
+            ;;                   (< time-to-enter-collision-range-l1 time-to-enter-collision-range-l2 time-to-exit-collision-range-l1)
+            ;;                   (< time-to-enter-collision-range-l2 time-to-enter-collision-range-l1 time-to-exit-collision-range-l2)
+            ;;                   (< time-to-enter-collision-range-l1 time-to-exit-collision-range-l2 time-to-exit-collision-range-l1)
+            ;;                   (< time-to-enter-collision-range-l2 time-to-exit-collision-range-l1 time-to-exit-collision-range-l2))
             ;; are-lines-converging (< (Math/abs distance-between-center-ends) (Math/abs distance-between-center-starts))
             ]
         ;; (println "collides-in-time: " collides-in-time)
-        (if (false? collides-in-time)
+        (if (> (:d collision-point-candidate) (inc particle-size))
           nil
-          (let [collision-x (:x collision-point)
-                get-l1-y (get-linear-function center-l1)
-                get-l2-y (get-linear-function center-l2)
-                collision-l1y (get-l1-y collision-x)
-                collision-l2y (get-l2-y collision-x)]
-            {:c1 [collision-x collision-l1y] :c2 [collision-x collision-l2y]}))))))
+          ;; (let [collision-x (:x collision-point)
+          ;;       get-l1-y (get-linear-function center-l1)
+          ;;       get-l2-y (get-linear-function center-l2)
+          ;;       collision-l1y (get-l1-y collision-x)
+          ;;       collision-l2y (get-l2-y collision-x)]
+          ;;   {:c1 [collision-x collision-l1y] :c2 [collision-x collision-l2y]})
+          {:c1 (nth line-1-intervals (:i collision-point-candidate)) :c2 (nth line-2-intervals (:i collision-point-candidate))})))))
 
 (defn determine-is-collision-between-paths [tl-line-one tl-line-two]
   (let [[tl-l1-start tl-l1-end] tl-line-one
@@ -309,6 +347,9 @@
   (apply > (interpose 10 bmtemp))
   (apply min  bmtemp)
   (find-intersection [[4 8] [4.1 2]] [[0 6] [8 6]] 0)
+  (vec (vals {:x 1 :y 4}))
+
+  (get-n-intervals-along-line 10 [[4 8] [12 2]])
 
   (safe-divide 10 0 Double/POSITIVE_INFINITY)
 
@@ -316,7 +357,7 @@
   (= Double/POSITIVE_INFINITY my-pos-inf)
 
   (def test-ln [[4 4] [6 6]])
-  (find-point-of-line-extension test-ln (Math/sqrt 8))
+  (find-point-of-line-extension test-ln (- (/ (Math/sqrt 8) 2)))
   (def extended-ln [(find-point-of-line-extension (reverse test-ln)  (Math/sqrt 8)) (find-point-of-line-extension test-ln  (Math/sqrt 8))])
   extended-ln
 

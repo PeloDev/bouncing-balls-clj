@@ -7,8 +7,8 @@
 
 (def frames-per-second 30)
 (def ticks-per-second (/ 1000 frames-per-second))
-(def particle-count 8)
-(def particle-size 24)
+(def particle-count 2)
+(def particle-size 128)
 (def initial-velocity 2) ;; px per tick
 (def gravitational-force 0.04)
 (def max-x (- 800 particle-size))
@@ -60,8 +60,10 @@
   (not= nil (some #(= val %) v)))
 
 (defn get-line-vars [[[x1 y1] [x2 y2]]]
-  (let [m (safe-divide (- y2 y1) (- x2 x1))
-        c (if (nil? m) nil (- y2 (* m x2)))]
+  (let [dx (- x2 x1)
+        dy (- y2 y1)
+        m (safe-divide dy dx Double/POSITIVE_INFINITY)
+        c (if (= m Double/POSITIVE_INFINITY) nil (- y2 (* m x2)))]
     {:m m :c c}))
 
 (defn distance-between-points [point-1 point-2]
@@ -71,20 +73,61 @@
         diff-y (- y2 y1)]
     (Math/sqrt (+ (* diff-x diff-x) (* diff-y diff-y)))))
 
-;; This is great, but we're not looking for a intersection at the scale of a single pixel,
-;; but an area
-(defn find-intersection [line-one line-two]
-  (let [{m1 :m c1 :c} (get-line-vars line-one)
+(defn find-point-of-line-extension [[[x1 y1] [x2 y2]] extension]
+  (let [line-length (distance-between-points [x1 y1] [x2 y2])]
+    (if (= 0 (int (Math/round line-length)))
+      [x2 y2]
+      (let [dx (- x2 x1)
+            dy (- y2 y1)
+            x-unit (/ dx line-length)
+            y-unit (/ dy line-length)
+            extended-x (+ x2 (* x-unit extension))
+            extended-y (+ y2 (* y-unit extension))]
+        [extended-x extended-y]))))
+
+
+(defn find-intersection [line-one line-two & {:keys [margin ignore-range x-range] :or {margin 0 ignore-range false x-range nil}}]
+  ;; (println "margin: " margin)
+  (let [r (if (nil? margin) 0 margin)
+        ign-range (if (nil? ignore-range) false ignore-range)
+        {m1 :m c1 :c} (get-line-vars line-one)
         {m2 :m c2 :c} (get-line-vars line-two)
-        vars-list-has-nil (vec-contains-value nil [m1 m2 c1 c2])
-        x-intercept (if vars-list-has-nil nil (safe-divide (- c2 c1) (- m1 m2)))
-        y-intercept (if (nil? x-intercept) nil ((get-linear-function line-one) x-intercept))
+        m1-is-infinity (= m1 Double/POSITIVE_INFINITY)
+        m2-is-infinity (= m2 Double/POSITIVE_INFINITY) 
+        x-intercept (if m1-is-infinity
+                      (nth (nth line-one 0) 0)
+                      (if m2-is-infinity
+                        (nth (nth line-two 0) 0)
+                        (safe-divide (- (+ c2 r) c1) (- m1 m2))))
+        ;; y-intercept (if (nil? x-intercept) nil ((get-linear-function line-one) x-intercept))
+        y-intercept (if m1-is-infinity 
+                      (if m2-is-infinity 
+                        (average-mean (into (into (mapv #(last %) line-one)) (into (mapv #(last %) line-two))))
+                        ((get-linear-function line-two) x-intercept))
+                      ((get-linear-function line-one) x-intercept))
         line-one-xs-list (apply list (mapv first line-one))
-        min-max-xs-one (list (apply min line-one-xs-list) (apply max line-one-xs-list))
+        min-max-xs-one (if (not= nil x-range)
+                         (sort x-range)
+                         (list (apply min line-one-xs-list) (apply max line-one-xs-list)))
         is-within-range (and
                          (not= x-intercept nil)
                          (apply < (interpose x-intercept min-max-xs-one)))]
-    (if is-within-range {:x x-intercept :y y-intercept} nil)))
+    (if (or is-within-range ign-range) {:x x-intercept :y y-intercept} nil)))
+
+(defn find-d-intersection [line-a line-b]
+  (let [[[ax1 ay1] [ax2 ay2]] line-a
+        [[bx1 by1] [bx2 by2]] line-b
+        a1 (- ay2 ay1)
+        b1 (- ax1 ax2)
+        c1 (+ (* a1 ax1) (* b1 ay1))
+        a2 (- by2 by1)
+        b2 (- bx1 bx2)
+        c2 (+ (* a2 bx1) (* b2 by1))
+        determinant (- (* a1 b2) (* a2 b1))]
+    (if (= 0 (int determinant))
+      nil
+      {:x (/ (- (* c1 b2) (* c2 b1)) determinant)
+       :y (/ (- (* c2 a1) (* c1 a2)) determinant)})))
 
 (defn find-collision [line-one line-two]
   (let [p-intersection (find-intersection line-one line-two)]
@@ -201,7 +244,46 @@
   ;; 7. Take the results from 6 and calculate the point of collision, it should be the midpoint of point at line 1 and point at line 2 
   ;; 8. Return result of 7, as well as maybe some identifying information so we know which ball is which later on.
   ;; * Actually on point 8 we need to know the line between centers at collision point. The velocity exchange should be applied along this line using trig.
-  )
+  (let [half-p-size (/ particle-size 2)
+        center-l1 (mapv (fn [tl-point] (get-center-point-from-top-left tl-point particle-size)) tl-line-one)
+        center-l2 (mapv (fn [tl-point] (get-center-point-from-top-left tl-point particle-size)) tl-line-two)
+        extended-center-l1 [(find-point-of-line-extension (reverse center-l1)  half-p-size) (find-point-of-line-extension center-l1  half-p-size)]
+        extended-center-l2 [(find-point-of-line-extension (reverse center-l2)  half-p-size) (find-point-of-line-extension center-l2  half-p-size)]
+        intersection-point (find-d-intersection center-l1 center-l2)
+        collision-point (find-intersection extended-center-l1 extended-center-l2 (* particle-size 1))]
+    ;; (if (and (not= intersection-point nil) (not= collision-point nil))
+    ;;   (println "intersection-point: " intersection-point ", collision-point: " collision-point);;
+    ;; (if (= 0 (mod (quot (now-unix) 100) 50))
+    ;;   (println "collision-point: " collision-point ", intersection-point: " intersection-point ", centerl1: " center-l1 ", centerl2: " center-l2))
+    (if (or (nil? collision-point) (nil? intersection-point))
+      nil
+      (let [[l1-start l1-end] center-l1
+            [l2-start l2-end] center-l2
+            dl1 (distance-between-points l1-start l1-end)
+            dl2 (distance-between-points l2-start l2-end)
+            dil1 (distance-between-points l1-start (vec (vals intersection-point)))
+            dil2 (distance-between-points l2-start (vec (vals intersection-point)))
+            i-radius half-p-size
+            time-to-enter-collision-range-l1 (/ (- dil1 i-radius) dl1)
+            time-to-exit-collision-range-l1 (/ (+ dil1 i-radius) dl1)
+            time-to-enter-collision-range-l2 (/ (- dil2 i-radius) dl2)
+            time-to-exit-collision-range-l2 (/ (+ dil2 i-radius) dl2)
+            collides-in-time (or
+                              (< time-to-enter-collision-range-l1 time-to-enter-collision-range-l2 time-to-exit-collision-range-l1)
+                              (< time-to-enter-collision-range-l2 time-to-enter-collision-range-l1 time-to-exit-collision-range-l2)
+                              (< time-to-enter-collision-range-l1 time-to-exit-collision-range-l2 time-to-exit-collision-range-l1)
+                              (< time-to-enter-collision-range-l2 time-to-exit-collision-range-l1 time-to-exit-collision-range-l2))
+            ;; are-lines-converging (< (Math/abs distance-between-center-ends) (Math/abs distance-between-center-starts))
+            ]
+        ;; (println "collides-in-time: " collides-in-time)
+        (if (false? collides-in-time)
+          nil
+          (let [collision-x (:x collision-point)
+                get-l1-y (get-linear-function center-l1)
+                get-l2-y (get-linear-function center-l2)
+                collision-l1y (get-l1-y collision-x)
+                collision-l2y (get-l2-y collision-x)]
+            {:c1 [collision-x collision-l1y] :c2 [collision-x collision-l2y]}))))))
 
 (defn determine-is-collision-between-paths [tl-line-one tl-line-two]
   (let [[tl-l1-start tl-l1-end] tl-line-one
@@ -226,6 +308,17 @@
   (interpose 3 bmtemp)
   (apply > (interpose 10 bmtemp))
   (apply min  bmtemp)
+  (find-intersection [[4 8] [4.1 2]] [[0 6] [8 6]] 0)
+
+  (safe-divide 10 0 Double/POSITIVE_INFINITY)
+
+  (def my-pos-inf Double/POSITIVE_INFINITY)
+  (= Double/POSITIVE_INFINITY my-pos-inf)
+
+  (def test-ln [[4 4] [6 6]])
+  (find-point-of-line-extension test-ln (Math/sqrt 8))
+  (def extended-ln [(find-point-of-line-extension (reverse test-ln)  (Math/sqrt 8)) (find-point-of-line-extension test-ln  (Math/sqrt 8))])
+  extended-ln
 
   (move-towards-zero -10 -20)
   (defn test-list-contains-nil []
@@ -235,11 +328,18 @@
           m2 0.14739205107713113] (vec-contains-value nil [m1 m2 c1 c2])))
   (test-list-contains-nil)
 
+
+  (def centerl1 [[395.9946988953032 363.66050303503505] [395.9946988953032 361.4784899866583]])
+  (def centerl2 [[347.38209083799813 322.79004153440144] [347.38209083799813 319.54440924353503]])
+
   (defn test-my-fn []
     (let [my-fn (fn [n] (* n n 2))]
       (my-fn 8)))
 
   (test-my-fn)
+
+  (find-intersection [[0 0] [10 10]] [[0 10] [10 0]])
+  (find-d-intersection [[0 0] [10 10]] [[0 10] [10 0]])
 
 
   (transpose [[1 2] [3 4] [5 6]])
@@ -322,10 +422,10 @@
                                                        (mapv apply-move))
                             test-state-x-ys (mapv get-x-y-from-state-transition test-state-transition)
                             ;; test-intersections (indexed-pairwise-combination test-state-x-ys find-boxlike-intersection 0)
-                            test-intersections (indexed-pairwise-combination test-state-x-ys determine-is-collision-between-paths 0)
+                            ;; test-intersections (indexed-pairwise-combination test-state-x-ys determine-is-collision-between-paths 0)
+                            test-intersections (indexed-pairwise-combination test-state-x-ys find-collision-between-two-paths 0)
                             consolidated-test-intersections (consolidate-indexed-pairwise-combination-result test-intersections (count test-state-transition))
-                            consolidated-test-intersections-matrix (get-indexed-pairwise-combination-matrix test-intersections (count test-state-transition))
-                            test-collisions (apply-collisions test-state-transition)]
+                            consolidated-test-intersections-matrix (get-indexed-pairwise-combination-matrix test-intersections (count test-state-transition))]
                         (println (str "test-state" test-state))
                         (println (str  "test-state-transition" test-state-transition))
                         (println (str "test-state-x-ys" (count test-state-x-ys) test-state-x-ys))
@@ -436,7 +536,7 @@
   (let [;; -----
         [prev-states next-states] (transpose state-transition)
         transition-coords (mapv get-x-y-from-state-transition state-transition)
-        indexed-intersections (indexed-pairwise-combination transition-coords determine-is-collision-between-paths 0)
+        indexed-intersections (indexed-pairwise-combination transition-coords find-collision-between-two-paths 0)
         collision-index-matrix (get-indexed-pairwise-combination-matrix indexed-intersections (count state-transition))
         new-state (mapv
                    (fn [state-row collision-indexes]

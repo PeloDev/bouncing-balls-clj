@@ -1,12 +1,15 @@
 (ns pelo.helpers)
 
+ (defn now [] (new java.util.Date))
+ (defn now-unix [] (System/currentTimeMillis))
+
 (defn factorial [n] (reduce *' (range 1 (inc n))))
 
-(defn safe-divide [a b]
+(defn safe-divide [a b & [default]]
   (try
     (/ a b)
     (catch ArithmeticException e
-      nil)))
+      default)))
 
 (defn average-mean [coll]
   (/ (reduce + coll) (count coll)))
@@ -101,7 +104,7 @@
                  (filter (fn [data]
                            (let [indexes (:idxs data)
                                  contains-idx (.contains indexes idx)]
-                             (and contains-idx (true? (:vals data))))) pwc-result)))
+                             (and contains-idx (and (not= (:vals data) nil) (not= (:vals data) false))))) pwc-result)))
          (vec (range n)))]
 
     res))

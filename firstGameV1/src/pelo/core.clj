@@ -7,9 +7,9 @@
 
 (def frames-per-second 30)
 (def ticks-per-second (/ 1000 frames-per-second))
-(def particle-count 2)
+(def particle-count 3)
 (def particle-size 128)
-(def initial-velocity 2) ;; px per tick
+(def initial-velocity 6) ;; px per tick
 (def gravitational-force 0.04)
 (def max-x (- 800 particle-size))
 (def min-x 0)
@@ -54,7 +54,8 @@
 
 (defn get-linear-function [[[x1 y1] [x2 y2]]]
   (let [m (/ (- y2 y1) (- x2 x1))
-        c (- y2 (* m x2))] (fn [x] (+ (* x m) c))))
+        c (- y2 (* m x2))] 
+    (fn [x] (+ (* x m) c))))
 
 (defn vec-contains-value [val v]
   (not= nil (some #(= val %) v)))
@@ -72,6 +73,15 @@
         diff-x (- x2 x1)
         diff-y (- y2 y1)]
     (Math/sqrt (+ (* diff-x diff-x) (* diff-y diff-y)))))
+
+(defn distance-between-points-with-direction [point-1 point-2]
+  (let [[x1 y1] point-1
+        [x2 y2] point-2
+        diff-x (- x2 x1)
+        diff-y (- y2 y1)]
+    {:distance (Math/sqrt (+ (* diff-x diff-x) (* diff-y diff-y)))
+     :dirx (if (< diff-x 0) -1 1)
+     :diry (if (< diff-y 0) -1 1)}))
 
 (defn find-point-of-line-extension [[[x1 y1] [x2 y2]] extension]
   (let [line-length (distance-between-points [x1 y1] [x2 y2])]
@@ -215,6 +225,29 @@
         x-range (range x-start (+ x-end x-interval) x-interval)
         y-range (range y-start (+ y-end y-interval) y-interval)]
     (mapv vector x-range y-range)))
+
+(defn find-simple-circle-collision [tl-line-one tl-line-two]
+  (let [center-l1 (mapv (fn [tl-point] (get-center-point-from-top-left tl-point particle-size)) tl-line-one)
+        center-l2 (mapv (fn [tl-point] (get-center-point-from-top-left tl-point particle-size)) tl-line-two)
+        [center-l1-start center-l1-end] center-l1
+        [center-l2-start center-l2-end] center-l2
+        {d-starts :distance ds-xdir :dirx ds-ydir :diry} (distance-between-points-with-direction center-l1-start center-l2-start)
+        {d-ends :distance de-xdir :dirx de-ydir :diry} (distance-between-points-with-direction center-l1-end center-l2-end)
+        are-touching-start (<= d-starts particle-size)
+        are-touching-end (<= d-ends particle-size)
+        are-xs-crossing (not= ds-xdir de-xdir)
+        are-ys-crossing (not= ds-ydir de-ydir)
+        intersection-point-map (find-intersection center-l1 center-l2)
+        are-intersecting (not= nil intersection-point-map)
+        are-colliding (or
+                       are-touching-end
+                       (and (or are-xs-crossing are-ys-crossing) are-touching-start))]
+    (if are-colliding
+      (if are-intersecting
+        (vec (vals intersection-point-map))
+        {:x (average-mean [(first center-l1-end) (first center-l2-end)])
+         :y (average-mean [(last center-l1-end) (last center-l2-end)])})
+      nil)))
 
 (defn find-collision-between-two-paths [tl-line-one tl-line-two]
   (let [center-l1 (mapv (fn [tl-point] (get-center-point-from-top-left tl-point particle-size)) tl-line-one)
@@ -505,7 +538,7 @@
   (let [;; -----
         [prev-states next-states] (transpose state-transition)
         transition-coords (mapv get-x-y-from-state-transition state-transition)
-        indexed-intersections (indexed-pairwise-combination transition-coords find-collision-between-two-paths 0)
+        indexed-intersections (indexed-pairwise-combination transition-coords find-simple-circle-collision 0)
         collision-index-matrix (get-indexed-pairwise-combination-matrix indexed-intersections (count state-transition))
         new-state (mapv
                    (fn [state-row collision-indexes]

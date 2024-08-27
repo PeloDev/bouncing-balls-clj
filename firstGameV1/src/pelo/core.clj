@@ -226,6 +226,14 @@
         y-range (range y-start (+ y-end y-interval) y-interval)]
     (mapv vector x-range y-range)))
 
+;; Note to self:
+;; The pairwise detection is efficient in that it avoids redundancy of having to
+;; calculate the same collisions/interactions twice,
+;; but it makes it quite difficult to determine state updates for each particle
+;; after the interaction, since the data for 2 of them is shared in one place.
+;; Maybe I should just keep it simple - do what may feel inefficient to get the desired outcome,
+;; then optimise afterwards.
+;; I do need to move on from physics at some point...
 (defn find-simple-circle-collision [tl-line-one tl-line-two]
   (let [center-l1 (mapv (fn [tl-point] (get-center-point-from-top-left tl-point particle-size)) tl-line-one)
         center-l2 (mapv (fn [tl-point] (get-center-point-from-top-left tl-point particle-size)) tl-line-two)

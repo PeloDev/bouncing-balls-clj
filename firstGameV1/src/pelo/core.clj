@@ -30,7 +30,7 @@
                       :x-velocity nil
                       :y-velocity nil
                       :colour Color/WHITE
-                      :ghost-frames 0})
+                      :ghost-frames 10})
                    (range particle-count)))))
 
 (defn draw-canvas [^Graphics g]
@@ -178,26 +178,6 @@
   (let [[min-num max-num] (min-max-vector num1 num2)]
     (+ min-num (/ (- max-num min-num) 2))))
 
-;; (defn get-boundary-from-tl-point [[[tlsx tlsy] [tlex tley]] p-size]
-;;   (let [tl-line [[tlsx tlsy] [tlex tley]]
-;;         br-line [[(+ tlsx p-size) (+ tlsy p-size)] [(+ tlex p-size) (+ tley p-size)]]
-;;         [topmost-tl bottommost-tl] (if (< tlsy tley) [[tlsx tlsy] [tlex tley]] [[tlex tley] [tlsx tlsy]])
-;;         [leftmost-tl rightmost-tl] (if (< tlsx tlex) [[tlsx tlsy] [tlex tley]] [[tlex tley] [tlsx tlsy]])
-;;         left-boundary [leftmost-tl
-;;                        [(nth leftmost-tl 0) (+ (nth leftmost-tl 1) p-size)]]
-;;         right-boundary [[(+ (nth rightmost-tl 0) p-size) (nth rightmost-tl 1)]
-;;                         [(+ (nth rightmost-tl 0) p-size) (+ (nth rightmost-tl 1) p-size)]]
-;;         top-boundary [topmost-tl
-;;                       [(+ (nth topmost-tl 0) p-size) (nth topmost-tl 1)]]
-;;         bottom-boundary [[(nth bottommost-tl 0) (+ (nth bottommost-tl 1) p-size)]
-;;                          [(+ (nth bottommost-tl 0) p-size) (+ (nth bottommost-tl 1) p-size)]]
-;;         ;;
-;;         ]
-;;     [tl-line top-boundary]))
-
-;; another naive approach:
-;; - what about if the cross paths within the same y range, meaning lines don't intersect and their final states aren't touching (therefore no collision...)
-;; (defn find-point-of-contact [[tlx1 tly1] [tlx2 tly2] p-size]
 (defn find-point-of-contact [line-one line-two p-size]
   (let [[[tlsx1 tlsy1] [tlex1 tley1]] line-one
         [[tlsx2 tlsy2] [tlex2 tley2]] line-two
@@ -214,9 +194,6 @@
        :y (get-middle-of-two-numbers (nth end-centre-one 1) (nth end-centre-two 1))}
       nil)))
 
-;; quite naive but can be improved on in future:
-;; - objects that cross paths in one transition may not collide due to different velocities
-;; - doesn't account for all corners of box (even later in future the perimeter of circle)
 (defn find-boxlike-intersection [tl-line-one tl-line-two]
   (let [br-line-one (mapv (fn [tl-point] (get-bottom-right-point-from-top-left tl-point particle-size)) tl-line-one)
         br-line-two (mapv (fn [tl-point] (get-bottom-right-point-from-top-left tl-point particle-size)) tl-line-two)
@@ -236,92 +213,49 @@
         x-interval (/ dx n)
         y-interval (/ dy n)
         x-range (range x-start (+ x-end x-interval) x-interval)
-        y-range (range y-start (+ y-end y-interval) y-interval)] 
+        y-range (range y-start (+ y-end y-interval) y-interval)]
     (mapv vector x-range y-range)))
 
 (defn find-collision-between-two-paths [tl-line-one tl-line-two]
-  ;; Better way of finding collisions for balls of the same radius:
-  ;; ================================================================
-  ;; 1. Get the center line of each ball's path
-  ;; 2. Determine if the distance of the lines are ever < particle size
-  ;; 3a. If the distances are never less than particle size, return nil
-  ;; 3b. If the distances are at some point less than particle size, proceed to step 4
-  ;; * Remember to also check if the lines are converging!
-  ;; 4. Determine if the balls reach the points where the distances are less than particle size at the same time
-  ;; 5a. if 4 is false then return nil
-  ;; 5b. if 4 is true proceed to 6
-  ;; 6. Find the points on each line where the distance is exactly equal to particle size
-  ;; 7. Take the results from 6 and calculate the point of collision, it should be the midpoint of point at line 1 and point at line 2 
-  ;; 8. Return result of 7, as well as maybe some identifying information so we know which ball is which later on.
-  ;; * Actually on point 8 we need to know the line between centers at collision point. The velocity exchange should be applied along this line using trig.
-  (let [;; half-p-size (/ particle-size 2)
-        center-l1 (mapv (fn [tl-point] (get-center-point-from-top-left tl-point particle-size)) tl-line-one)
+  (let [center-l1 (mapv (fn [tl-point] (get-center-point-from-top-left tl-point particle-size)) tl-line-one)
         center-l2 (mapv (fn [tl-point] (get-center-point-from-top-left tl-point particle-size)) tl-line-two)
         [center-l1-start center-l1-end] center-l1
         [center-l2-start center-l2-end] center-l2
         distance-between-center-starts (distance-between-points center-l1-start center-l2-start)
         distance-between-center-ends (distance-between-points center-l1-end center-l2-end)
+        are-touching (<= distance-between-center-ends particle-size)
         are-boxes-converging (< (Math/abs distance-between-center-ends) (Math/abs distance-between-center-starts))
-        ;; extended-center-l1 [(find-point-of-line-extension (reverse center-l1)  half-p-size) (find-point-of-line-extension center-l1  half-p-size)]
-        ;; extended-center-l2 [(find-point-of-line-extension (reverse center-l2)  half-p-size) (find-point-of-line-extension center-l2  half-p-size)]
-        ;; intersection-point-map (find-d-intersection center-l1 center-l2)
-        intersection-point-map (find-intersection center-l1 center-l2)
-        ;; collision-point (find-intersection center-l1 center-l2 (* particle-size 1))
-        ]
-    ;; (if (and (not= intersection-point nil) (not= collision-point nil))
-    ;;   (println "intersection-point: " intersection-point ", collision-point: " collision-point);;
-    ;; (if (= 0 (mod (quot (now-unix) 100) 50))
-    ;;   (println "collision-point: " collision-point ", intersection-point: " intersection-point ", centerl1: " center-l1 ", centerl2: " center-l2))
-    (if (or (not are-boxes-converging) (nil? intersection-point-map))
-      nil
-      (let [intersection-point (vec (vals intersection-point-map))
-            point-of-least-distance-1 (if (nil? intersection-point) center-l1-end intersection-point)
-            point-of-least-distance-2 (if (nil? intersection-point) center-l2-end intersection-point)
-            line-1-intervals (get-n-intervals-along-line particle-size [point-of-least-distance-1 (find-point-of-line-extension [center-l1-start point-of-least-distance-1] (- particle-size))])
-            line-2-intervals (get-n-intervals-along-line particle-size [point-of-least-distance-2 (find-point-of-line-extension [center-l2-start point-of-least-distance-2] (- particle-size))])
-            interval-distances (mapv
-                                (fn [p1 p2 idx]
-                                  {:d (distance-between-points p1 p2) :i idx})
-                                line-1-intervals
-                                line-2-intervals
-                                (range (inc particle-size)))
-            collision-point-candidate (reduce (fn [closest-d-map d-map]
-                                                (if (<
-                                                     (Math/abs (- particle-size (:d d-map)))
-                                                     (Math/abs (- particle-size (:d closest-d-map))))
-                                                  d-map
-                                                  closest-d-map))
-                                              {:i -1 :d Double/POSITIVE_INFINITY}
-                                              interval-distances)
-
-            ;; [l1-start l1-end] center-l1
-            ;; [l2-start l2-end] center-l2
-            ;; dl1 (distance-between-points l1-start l1-end)
-            ;; dl2 (distance-between-points l2-start l2-end)
-            ;; dil1 (distance-between-points l1-start (vec (vals intersection-point)))
-            ;; dil2 (distance-between-points l2-start (vec (vals intersection-point)))
-            ;; i-radius half-p-size
-            ;; time-to-enter-collision-range-l1 (/ (- dil1 i-radius) dl1)
-            ;; time-to-exit-collision-range-l1 (/ (+ dil1 i-radius) dl1)
-            ;; time-to-enter-collision-range-l2 (/ (- dil2 i-radius) dl2)
-            ;; time-to-exit-collision-range-l2 (/ (+ dil2 i-radius) dl2)
-            ;; collides-in-time (or
-            ;;                   (< time-to-enter-collision-range-l1 time-to-enter-collision-range-l2 time-to-exit-collision-range-l1)
-            ;;                   (< time-to-enter-collision-range-l2 time-to-enter-collision-range-l1 time-to-exit-collision-range-l2)
-            ;;                   (< time-to-enter-collision-range-l1 time-to-exit-collision-range-l2 time-to-exit-collision-range-l1)
-            ;;                   (< time-to-enter-collision-range-l2 time-to-exit-collision-range-l1 time-to-exit-collision-range-l2))
-            ;; are-lines-converging (< (Math/abs distance-between-center-ends) (Math/abs distance-between-center-starts))
-            ]
-        ;; (println "collides-in-time: " collides-in-time)
-        (if (> (:d collision-point-candidate) (inc particle-size))
-          nil
-          ;; (let [collision-x (:x collision-point)
-          ;;       get-l1-y (get-linear-function center-l1)
-          ;;       get-l2-y (get-linear-function center-l2)
-          ;;       collision-l1y (get-l1-y collision-x)
-          ;;       collision-l2y (get-l2-y collision-x)]
-          ;;   {:c1 [collision-x collision-l1y] :c2 [collision-x collision-l2y]})
-          {:c1 (nth line-1-intervals (:i collision-point-candidate)) :c2 (nth line-2-intervals (:i collision-point-candidate))})))))
+        full-intersection-point-map (find-d-intersection center-l1 center-l2)
+        intersection-point-map (find-intersection center-l1 center-l2)]
+    (if are-touching
+      (if (nil? full-intersection-point-map)
+        {:x (average-mean [(first center-l1-end) (first center-l2-end)])
+         :y (average-mean [(last center-l1-end) (last center-l2-end)])}
+        full-intersection-point-map)
+      (if (or (not are-boxes-converging) (nil? intersection-point-map))
+        nil
+        (let [intersection-point (vec (vals intersection-point-map))
+              point-of-least-distance-1 (if (nil? intersection-point) center-l1-end intersection-point)
+              point-of-least-distance-2 (if (nil? intersection-point) center-l2-end intersection-point)
+              line-1-intervals (get-n-intervals-along-line particle-size [point-of-least-distance-1 (find-point-of-line-extension [center-l1-start point-of-least-distance-1] (- particle-size))])
+              line-2-intervals (get-n-intervals-along-line particle-size [point-of-least-distance-2 (find-point-of-line-extension [center-l2-start point-of-least-distance-2] (- particle-size))])
+              interval-distances (mapv
+                                  (fn [p1 p2 idx]
+                                    {:d (distance-between-points p1 p2) :i idx})
+                                  line-1-intervals
+                                  line-2-intervals
+                                  (range (inc particle-size)))
+              collision-point-candidate (reduce (fn [closest-d-map d-map]
+                                                  (if (<
+                                                       (Math/abs (- particle-size (:d d-map)))
+                                                       (Math/abs (- particle-size (:d closest-d-map))))
+                                                    d-map
+                                                    closest-d-map))
+                                                {:i -1 :d Double/POSITIVE_INFINITY}
+                                                interval-distances)]
+          (if (> (:d collision-point-candidate) (* particle-size 1.1))
+            nil
+            {:c1 (nth line-1-intervals (:i collision-point-candidate)) :c2 (nth line-2-intervals (:i collision-point-candidate))}))))))
 
 (defn determine-is-collision-between-paths [tl-line-one tl-line-two]
   (let [[tl-l1-start tl-l1-end] tl-line-one
@@ -348,6 +282,7 @@
   (apply min  bmtemp)
   (find-intersection [[4 8] [4.1 2]] [[0 6] [8 6]] 0)
   (vec (vals {:x 1 :y 4}))
+  (distance-between-points [124.12881727411087 492.753424602454] [161.02517063820397 530.5023619097949])
 
   (get-n-intervals-along-line 10 [[4 8] [12 2]])
 
@@ -519,7 +454,6 @@
   )
 
 
-;; adding to 
 (defn apply-move [state]
   (let [{:keys [x y angle x-velocity y-velocity]} state
         new-x-velocity (if (nil? x-velocity) (* initial-velocity (Math/cos (Math/toRadians angle))) x-velocity)
@@ -530,8 +464,6 @@
         new-y (+ y new-y-velocity)
         next-state (assoc state :x new-x :y new-y :x-velocity new-x-velocity :y-velocity new-y-velocity) ;; TODO: use new-x-velocity
         ]
-    ;; (println (str "Change in V" (- new-y-velocity (if (nil? y-velocity) 0 y-velocity))))
-    ;; [state {:x new-x :y new-y :angle angle :x-velocity x-velocity :y-velocity new-y-velocity}]
     [state next-state]))
 
 (defn apply-bounce [[old-state new-state]]
@@ -557,13 +489,9 @@
                      (max (bounce old-y dy min-y) (+ min-y 1))
                      new-y))
         bounce-angle (if is-x-bounce (- 180 new-angle) (if is-y-bounce (- 360 new-angle) new-angle))
-        ;; bounce-x-velocity (if (and is-x-bounce (not= nil new-x-velocity)) (- new-x-velocity bounce-velocity-loss) new-x-velocity)
         bounce-x-velocity (if is-x-bounce (move-towards-zero (- 0 new-x-velocity) bounce-velocity-loss) new-x-velocity)
         bounce-y-velocity (if is-y-bounce (move-towards-zero (- 0 new-y-velocity) bounce-velocity-loss) new-y-velocity)
         next-state (assoc new-state :x bounce-x :y bounce-y :x-velocity bounce-x-velocity :y-velocity bounce-y-velocity :angle bounce-angle)]
-        ;; .....
-
-    ;; [new-state {:x bounce-x :y bounce-y :x-velocity bounce-x-velocity :y-velocity bounce-y-velocity :angle bounce-angle}]
     [new-state next-state]))
 
 (defn debug-paint-red-intersection [state-transition intersection-data]
@@ -583,10 +511,7 @@
                    (fn [state-row collision-indexes]
                      (if (or (> (:ghost-frames state-row) 0) (empty? collision-indexes))
                        (assoc state-row :ghost-frames (min 0 (dec (:ghost-frames state-row))))
-                       (let [colliding-states-data (mapv (fn [idx]
-                                                           (select-keys (nth next-states idx) [:x :y :x-velocity :y-velocity]))
-                                                         collision-indexes)
-                             number-of-collisions (count collision-indexes)
+                       (let [number-of-collisions (count collision-indexes)
                              avg-colliding-state (reduce
                                                   (fn [avg-state idx]
                                                     ;; (println "avg-state: " avg-state ", idx: " idx)
@@ -605,19 +530,8 @@
                                                                           (avg-step :y-velocity avg-state)
                                                                           (avg-step :y-velocity state-row-at-idx)))))
                                                   {:x 0 :y 0 :x-velocity 0 :y-velocity 0}
-                                                  collision-indexes)
-                             calc-new-pos (fn [k-pos k-vel ref other]
-                                            ;; (println "k: " k ", ref: " ref ", other: " other)
-                                            (let [ref-future-pos (+ (k-pos ref) 0);; TODO: replace 0 with `(k-vel ref)` or revert
-                                                  other-future-pos (+ (k-pos other) 0);; TODO: replace 0 with `(k-vel other)` or revert
-                                                  diff-future-pos (- ref-future-pos other-future-pos)
-                                                  abs-diff-future-pos (Math/abs diff-future-pos)]
-                                              (if (>= abs-diff-future-pos 5)
-                                                ref-future-pos
-                                                (+ ref-future-pos (* (/ diff-future-pos abs-diff-future-pos) (- particle-size abs-diff-future-pos))))))]
+                                                  collision-indexes)]
                          (assoc state-row
-                                ;; :x (calc-new-pos :x :x-velocity state-row avg-colliding-state)
-                                ;; :y (calc-new-pos :y :y-velocity state-row avg-colliding-state)
                                 :x-velocity (move-towards-zero (+ 0 (:x-velocity avg-colliding-state)) bounce-velocity-loss);; TODO: replace 0 with `(:x-velocity state-row)` or revert
                                 :y-velocity (move-towards-zero (+ 0 (:y-velocity avg-colliding-state)) bounce-velocity-loss);; TODO: replace 0 with `(:y-velocity state-row)` or revert
                                 :ghost-frames (+ (:ghost-frames state-row) 16)))))
@@ -661,5 +575,3 @@
 
 (defn start-game []
   (create-frame))
-
-  

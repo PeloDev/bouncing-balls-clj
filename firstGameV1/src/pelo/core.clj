@@ -592,11 +592,8 @@
 
 (defn apply-collisions [state-transition]
   (let [;; -----
-        [prev-states next-states] (transpose state-transition)
+        [prev-states] (transpose state-transition)
         transition-coords (mapv get-x-y-from-state-transition state-transition)
-
-        ;; indexed-intersections (indexed-pairwise-combination transition-coords find-simple-circle-collision 0)
-        ;; collision-index-matrix (get-indexed-pairwise-combination-matrix indexed-intersections (count state-transition))
         new-states (mapv
                     (fn [idx]
                       (let [[current-state-transition-row rest-state-transitions] (extract-nth idx state-transition)
@@ -620,41 +617,13 @@
                                                                                     end-up-touching
                                                                                     (and start-off-touching are-converging-or-parallel))]
                                                                  are-colliding))
-                                                             rest-state-transitions)
-                                new-state-row (if (empty? collision-state-transitions)
-                                                current-proposed-next-state-row
-                                                (assoc current-proposed-next-state-row
-                                                       :x-velocity (:x-velocity (last (last collision-state-transitions)))
-                                                       :y-velocity (:y-velocity (last (last collision-state-transitions)))
-                                                       :ghost-frames (+ (:ghost-frames current-proposed-next-state-row) 320)))]
-                            new-state-row))))
-                  ;;  (fn [state-row collision-indexes]
-                  ;;    (if (or (> (:ghost-frames state-row) 0) (empty? collision-indexes))
-                  ;;      (assoc state-row :ghost-frames (min 0 (dec (:ghost-frames state-row))))
-                  ;;      (let [number-of-collisions (count collision-indexes)
-                  ;;            avg-colliding-state (reduce
-                  ;;                                 (fn [avg-state idx]
-                  ;;                                   ;; (println "avg-state: " avg-state ", idx: " idx)
-                  ;;                                   (let [state-row-at-idx (nth next-states idx)
-                  ;;                                         avg-step (fn [k d]
-                  ;;                                                    (/  (k d) number-of-collisions))]
-                  ;;                                     (assoc avg-state
-                  ;;                                            :x (+ (avg-step :x avg-state)
-                  ;;                                                  (avg-step :x state-row-at-idx))
-                  ;;                                            :y (+ (avg-step :y avg-state)
-                  ;;                                                  (avg-step :y state-row-at-idx))
-                  ;;                                            :x-velocity (+
-                  ;;                                                         (avg-step :x-velocity avg-state)
-                  ;;                                                         (avg-step :x-velocity state-row-at-idx))
-                  ;;                                            :y-velocity (+
-                  ;;                                                         (avg-step :y-velocity avg-state)
-                  ;;                                                         (avg-step :y-velocity state-row-at-idx)))))
-                  ;;                                 {:x 0 :y 0 :x-velocity 0 :y-velocity 0}
-                  ;;                                 collision-indexes)]
-                  ;;        (assoc state-row
-                  ;;               :x-velocity (move-towards-zero (+ 0 (:x-velocity avg-colliding-state)) bounce-velocity-loss);; TODO: replace 0 with `(:x-velocity state-row)` or revert
-                  ;;               :y-velocity (move-towards-zero (+ 0 (:y-velocity avg-colliding-state)) bounce-velocity-loss);; TODO: replace 0 with `(:y-velocity state-row)` or revert
-                  ;;               :ghost-frames (+ (:ghost-frames state-row) 16)))))
+                                                             rest-state-transitions)]
+                            (if (empty? collision-state-transitions)
+                              current-proposed-next-state-row
+                              (let [new-state-row (assoc current-proposed-next-state-row
+                                                         :x-velocity (:x-velocity (last (last collision-state-transitions)))
+                                                         :y-velocity (:y-velocity (last (last collision-state-transitions)))
+                                                         :ghost-frames (+ (:ghost-frames current-proposed-next-state-row) 16))] new-state-row))))))
                     (range (count transition-coords)))]
     (transpose [prev-states new-states])))
 

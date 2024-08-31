@@ -24,13 +24,13 @@
 (def states (atom
              (vec (map
                    (fn [_]
-                     {:x (random-value 599)
-                      :y (random-value 599)
+                     {:x (random-value max-x)
+                      :y (random-value max-y)
                       :angle (random-value 360)
                       :x-velocity nil
                       :y-velocity nil
                       :colour Color/WHITE
-                      :ghost-frames 10})
+                      :ghost-frames 0})
                    (range particle-count)))))
 
 (defn draw-canvas [^Graphics g]
@@ -54,7 +54,7 @@
 
 (defn get-linear-function [[[x1 y1] [x2 y2]]]
   (let [m (/ (- y2 y1) (- x2 x1))
-        c (- y2 (* m x2))] 
+        c (- y2 (* m x2))]
     (fn [x] (+ (* x m) c))))
 
 (defn vec-contains-value [val v]
@@ -490,6 +490,16 @@
   (def my-map {:a 3 :b 4 :c "4"})
   (:a my-map)
   (contains? [1 2 3 4] 2)
+  (extract-nth 2 [1 2 3 4 5])
+  (take 2 [1 2 3 4])
+  (into [1 2] [3 4])
+  ;; (def example-initial-state [[
+  ;;   {:x 186, :y 475, :angle 38, :x-velocity nil, :y-velocity nil, :colour #object[java.awt.Color 0xcb53ff5 java.awt.Color [r=255,g=255,b=255]], :ghost-frames 10}
+  ;;   {:x 190.72806452164033, :y 478.73396885195393, :angle 38, :x-velocity 4.728064521640332, :y-velocity 3.73396885195395, :colour #object[java.awt.Color 0xcb53ff5 java.awt.Color [r=255,g=255,b=255]], :ghost-frames 10}]
+  ;;  [{:x 323, :y 165, :angle 87, :x-velocity nil, :y-velocity nil, :colour #object[java.awt.Color 0xcb53ff5 java.awt.Color [r=255,g=255,b=255]], :ghost-frames 10}
+  ;;   {:x 323.3140157374577, :y 171.03177720852744, :angle 87, :x-velocity 0.3140157374576638, :y-velocity 6.031777208527443, :colour #object[java.awt.Color 0xcb53ff5 java.awt.Color [r=255,g=255,b=255]], :ghost-frames 10}]
+  ;;  [{:x 503, :y 347, :angle 16, :x-velocity nil, :y-velocity nil, :colour #object[java.awt.Color 0xcb53ff5 java.awt.Color [r=255,g=255,b=255]], :ghost-frames 10} 
+  ;;   {:x 508.7675701756299, :y 348.693824134902, :angle 16, :x-velocity 5.767570175629913, :y-velocity 1.6938241349019951, :colour #object[java.awt.Color 0xcb53ff5 java.awt.Color [r=255,g=255,b=255]], :ghost-frames 10}]])
   ;; (def test-trans-intersections (mapv find-intersection test-state-x-ys))
   ;; END
   )
@@ -542,7 +552,7 @@
                              (assoc next-state :colour Color/WHITE))]
     [prev-state updated-next-state]))
 
-(defn apply-collisions [state-transition]
+(defn apply-collisions-pairwise-combination [state-transition]
   (let [;; -----
         [prev-states next-states] (transpose state-transition)
         transition-coords (mapv get-x-y-from-state-transition state-transition)
@@ -579,6 +589,74 @@
                    next-states
                    collision-index-matrix)]
     (transpose [prev-states new-state])))
+
+(defn apply-collisions [state-transition]
+  (let [;; -----
+        [prev-states next-states] (transpose state-transition)
+        transition-coords (mapv get-x-y-from-state-transition state-transition)
+
+        ;; indexed-intersections (indexed-pairwise-combination transition-coords find-simple-circle-collision 0)
+        ;; collision-index-matrix (get-indexed-pairwise-combination-matrix indexed-intersections (count state-transition))
+        new-states (mapv
+                    (fn [idx]
+                      (let [[current-state-transition-row rest-state-transitions] (extract-nth idx state-transition)
+                            current-proposed-next-state-row (last current-state-transition-row)]
+                        (if (> (:ghost-frames current-proposed-next-state-row) 0)
+                          (assoc current-proposed-next-state-row :ghost-frames (dec (:ghost-frames current-proposed-next-state-row)))
+                          (let [current-state-line (get-x-y-from-state-transition current-state-transition-row)
+                                current-state-center-line (mapv #(get-center-point-from-top-left % particle-size) current-state-line)
+                                [current-start current-end] current-state-center-line
+                                collision-state-transitions (filterv
+                                                             (fn [state-transition-row]
+                                                               (let [other-state-line (get-x-y-from-state-transition state-transition-row)
+                                                                     other-state-center-line (mapv #(get-center-point-from-top-left % particle-size) other-state-line)
+                                                                     [other-start other-end] other-state-center-line
+                                                                     start-distance-to-current (distance-between-points current-start other-start)
+                                                                     end-distance-to-current (distance-between-points current-end other-end)
+                                                                     start-off-touching (<= start-distance-to-current particle-size)
+                                                                     end-up-touching (<= end-distance-to-current particle-size)
+                                                                     are-converging-or-parallel (<= end-distance-to-current start-distance-to-current)
+                                                                     are-colliding (or
+                                                                                    end-up-touching
+                                                                                    (and start-off-touching are-converging-or-parallel))]
+                                                                 are-colliding))
+                                                             rest-state-transitions)
+                                new-state-row (if (empty? collision-state-transitions)
+                                                current-proposed-next-state-row
+                                                (assoc current-proposed-next-state-row
+                                                       :x-velocity (:x-velocity (last (last collision-state-transitions)))
+                                                       :y-velocity (:y-velocity (last (last collision-state-transitions)))
+                                                       :ghost-frames (+ (:ghost-frames current-proposed-next-state-row) 320)))]
+                            new-state-row))))
+                  ;;  (fn [state-row collision-indexes]
+                  ;;    (if (or (> (:ghost-frames state-row) 0) (empty? collision-indexes))
+                  ;;      (assoc state-row :ghost-frames (min 0 (dec (:ghost-frames state-row))))
+                  ;;      (let [number-of-collisions (count collision-indexes)
+                  ;;            avg-colliding-state (reduce
+                  ;;                                 (fn [avg-state idx]
+                  ;;                                   ;; (println "avg-state: " avg-state ", idx: " idx)
+                  ;;                                   (let [state-row-at-idx (nth next-states idx)
+                  ;;                                         avg-step (fn [k d]
+                  ;;                                                    (/  (k d) number-of-collisions))]
+                  ;;                                     (assoc avg-state
+                  ;;                                            :x (+ (avg-step :x avg-state)
+                  ;;                                                  (avg-step :x state-row-at-idx))
+                  ;;                                            :y (+ (avg-step :y avg-state)
+                  ;;                                                  (avg-step :y state-row-at-idx))
+                  ;;                                            :x-velocity (+
+                  ;;                                                         (avg-step :x-velocity avg-state)
+                  ;;                                                         (avg-step :x-velocity state-row-at-idx))
+                  ;;                                            :y-velocity (+
+                  ;;                                                         (avg-step :y-velocity avg-state)
+                  ;;                                                         (avg-step :y-velocity state-row-at-idx)))))
+                  ;;                                 {:x 0 :y 0 :x-velocity 0 :y-velocity 0}
+                  ;;                                 collision-indexes)]
+                  ;;        (assoc state-row
+                  ;;               :x-velocity (move-towards-zero (+ 0 (:x-velocity avg-colliding-state)) bounce-velocity-loss);; TODO: replace 0 with `(:x-velocity state-row)` or revert
+                  ;;               :y-velocity (move-towards-zero (+ 0 (:y-velocity avg-colliding-state)) bounce-velocity-loss);; TODO: replace 0 with `(:y-velocity state-row)` or revert
+                  ;;               :ghost-frames (+ (:ghost-frames state-row) 16)))))
+                    (range (count transition-coords)))]
+    (transpose [prev-states new-states])))
 
 (defn update-state [states]
   (->> states

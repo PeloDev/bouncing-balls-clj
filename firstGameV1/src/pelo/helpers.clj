@@ -1,9 +1,12 @@
 (ns pelo.helpers)
 
- (defn now [] (new java.util.Date))
- (defn now-unix [] (System/currentTimeMillis))
+(defn now [] (new java.util.Date))
+(defn now-unix [] (System/currentTimeMillis))
 
 (defn factorial [n] (reduce *' (range 1 (inc n))))
+
+(defn extract-nth [n c]
+  [(nth c n) (into (vec (take n c)) (vec (drop (inc n) c)))])
 
 (defn safe-divide [a b & [default]]
   (try

@@ -603,26 +603,46 @@
                           (let [current-state-line (get-x-y-from-state-transition current-state-transition-row)
                                 current-state-center-line (mapv #(get-center-point-from-top-left % particle-size) current-state-line)
                                 [current-start current-end] current-state-center-line
-                                collision-state-transitions (filterv
-                                                             (fn [state-transition-row]
-                                                               (let [other-state-line (get-x-y-from-state-transition state-transition-row)
-                                                                     other-state-center-line (mapv #(get-center-point-from-top-left % particle-size) other-state-line)
-                                                                     [other-start other-end] other-state-center-line
-                                                                     start-distance-to-current (distance-between-points current-start other-start)
-                                                                     end-distance-to-current (distance-between-points current-end other-end)
-                                                                     start-off-touching (<= start-distance-to-current particle-size)
-                                                                     end-up-touching (<= end-distance-to-current particle-size)
-                                                                     are-converging-or-parallel (<= end-distance-to-current start-distance-to-current)
-                                                                     are-colliding (or
-                                                                                    end-up-touching
-                                                                                    (and start-off-touching are-converging-or-parallel))]
-                                                                 are-colliding))
-                                                             rest-state-transitions)]
-                            (if (empty? collision-state-transitions)
+                                other-collision-state-transition-data-vec (filterv
+                                                                           (fn [data-vec] (first data-vec))
+                                                                           (mapv
+                                                                            (fn [state-transition-row]
+                                                                              (let [other-state-line (get-x-y-from-state-transition state-transition-row)
+                                                                                    other-state-center-line (mapv #(get-center-point-from-top-left % particle-size) other-state-line)
+                                                                                    [other-start other-end] other-state-center-line
+                                                                                    start-distance-to-current (distance-between-points current-start other-start)
+                                                                                    end-distance-to-current (distance-between-points current-end other-end)
+                                                                                    start-off-touching (<= start-distance-to-current particle-size)
+                                                                                    end-up-touching (<= end-distance-to-current particle-size)
+                                                                                    are-converging-or-parallel (<= end-distance-to-current start-distance-to-current)
+                                                                                    are-colliding (or
+                                                                                                   end-up-touching
+                                                                                                   (and start-off-touching are-converging-or-parallel))]
+                                                                                [are-colliding
+                                                                                 state-transition-row
+                                                                                 other-state-center-line
+                                                                                 start-off-touching
+                                                                                 end-up-touching
+                                                                                 are-converging-or-parallel
+                                                                                 start-distance-to-current
+                                                                                 end-distance-to-current]))
+                                                                            rest-state-transitions))
+                                collision-candidate-transition (first other-collision-state-transition-data-vec)
+                                [are-colliding
+                                 other-state-transition-row
+                                 other-state-center-line
+                                 start-off-touching
+                                 end-up-touching
+                                 are-converging-or-parallel
+                                 start-distance-to-current
+                                 end-distance-to-current] collision-candidate-transition
+                                
+                                ]
+                            (if (empty? collision-candidate-transition)
                               current-proposed-next-state-row
                               (let [new-state-row (assoc current-proposed-next-state-row
-                                                         :x-velocity (:x-velocity (last (last collision-state-transitions)))
-                                                         :y-velocity (:y-velocity (last (last collision-state-transitions)))
+                                                         :x-velocity (:x-velocity (last other-state-transition-row))
+                                                         :y-velocity (:y-velocity (last other-state-transition-row))
                                                          :ghost-frames (+ (:ghost-frames current-proposed-next-state-row) 16))] new-state-row))))))
                     (range (count transition-coords)))]
     (transpose [prev-states new-states])))

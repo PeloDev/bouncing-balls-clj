@@ -17,6 +17,9 @@
 (defn average-mean [coll]
   (/ (reduce + coll) (count coll)))
 
+(defn get-direction [start-num end-num]
+  (/ (/ start-num end-num) (Math/abs (/ start-num end-num))))
+
 (defn move-towards-zero [num mv]
   (if (= (int num) 0)
     0
@@ -121,3 +124,73 @@
    (vec (range n))))
 
 
+;; (defn apply-collisions [state-transition]
+;;   (let [;; -----
+;;         [prev-states next-states] (transpose state-transition)
+;;         transition-coords (mapv get-x-y-from-state-transition state-transition)
+
+;;         ;; indexed-intersections (indexed-pairwise-combination transition-coords find-simple-circle-collision 0)
+;;         ;; collision-index-matrix (get-indexed-pairwise-combination-matrix indexed-intersections (count state-transition))
+;;         new-states (mapv
+;;                     (fn [idx]
+;;                       (let [[current-state-transition-row rest-state-transitions] (extract-nth idx state-transition)
+;;                             current-proposed-next-state-row (last current-state-transition-row)]
+;;                         (if (> (:ghost-frames current-proposed-next-state-row) 0)
+;;                           (assoc current-proposed-next-state-row :ghost-frames (dec (:ghost-frames current-proposed-next-state-row)))
+;;                           (let [current-state-line (get-x-y-from-state-transition current-state-transition-row)
+;;                                 current-state-center-line (mapv #(get-center-point-from-top-left % particle-size) current-state-line)
+;;                                 [current-start current-end] current-state-center-line
+;;                                 collision-state-transitions (filterv
+;;                                                              (fn [state-transition-row]
+;;                                                                (let [other-state-line (get-x-y-from-state-transition state-transition-row)
+;;                                                                      other-state-center-line (mapv #(get-center-point-from-top-left % particle-size) other-state-line)
+;;                                                                      [other-start other-end] other-state-center-line
+;;                                                                      start-distance-to-current (distance-between-points current-start other-start)
+;;                                                                      end-distance-to-current (distance-between-points current-end other-end)
+;;                                                                      start-off-touching (<= start-distance-to-current particle-size)
+;;                                                                      end-up-touching (<= end-distance-to-current particle-size)
+;;                                                                      are-converging-or-parallel (<= end-distance-to-current start-distance-to-current)
+;;                                                                      are-colliding (or
+;;                                                                                     end-up-touching
+;;                                                                                     (and start-off-touching are-converging-or-parallel))]
+;;                                                                  are-colliding))
+;;                                                              rest-state-transitions)
+
+;;                                 ;; new-state-row (if (empty? collision-state-transitions)
+;;                                 ;;                 current-proposed-next-state-row
+;;                                 ;;                 (assoc current-proposed-next-state-row
+;;                                 ;;                        :x-velocity (:x-velocity (last (last collision-state-transitions)))
+;;                                 ;;                        :y-velocity (:y-velocity (last (last collision-state-transitions)))
+;;                                 ;;                        :ghost-frames (+ (:ghost-frames current-proposed-next-state-row) 320)))
+;;                                 ]
+;;                             (if (empty? collision-state-transitions)
+;;                               current-proposed-next-state-row
+;;                               (let [;; TODO determine and get the closest collision from the vector collision-state-transitions
+;;                                     ;; then we can maybe just apply collision to that closest particle, instead some-colliding-state-transition below
+;;                                     some-colliding-state-transition (first collision-state-transitions)
+;;                                     ;; other-state-line (get-x-y-from-state-transition some-colliding-state-transition)
+;;                                     ;; other-state-center-line (mapv #(get-center-point-from-top-left % particle-size) other-state-line)
+;;                                     ;; [other-start other-end] other-state-center-line
+;;                                     ;; start-distance-to-current (distance-between-points current-start other-start)
+;;                                     ;; end-distance-to-current (distance-between-points current-end other-end)
+;;                                     ;; start-off-touching (<= start-distance-to-current particle-size)
+;;                                     ;; end-up-touching (<= end-distance-to-current particle-size)
+;;                                     ;; start-off-and-end-up-touching (and start-off-touching end-up-touching)
+;;                                     other-x-v (:x-velocity (last some-colliding-state-transition))
+;;                                     other-y-v (:y-velocity (last some-colliding-state-transition))
+;;                                     ;; dx-direction (get-direction (first current-end) (first other-end))
+;;                                     ;; dy-direction (get-direction (last current-end) (last other-end))
+;;                                     ;; seperation-v-x (if start-off-and-end-up-touching
+;;                                     ;;                  (* 0.1 other-x-v dx-direction)
+;;                                     ;;                  0)
+;;                                     ;; seperation-v-y (if start-off-and-end-up-touching
+;;                                     ;;                  (* 0.1 other-y-v dy-direction)
+;;                                     ;;                  0)
+;;                                     seperation-v-x 0
+;;                                     seperation-v-y 0
+;;                                     new-state-row (assoc current-proposed-next-state-row
+;;                                                          :x-velocity (:x-velocity (+ other-x-v seperation-v-x))
+;;                                                          :y-velocity (:y-velocity (+ other-y-v seperation-v-y))
+;;                                                          :ghost-frames (+ (:ghost-frames current-proposed-next-state-row) 16))] new-state-row))))))
+;;                     (range (count transition-coords)))]
+;;     (transpose [prev-states new-states])))

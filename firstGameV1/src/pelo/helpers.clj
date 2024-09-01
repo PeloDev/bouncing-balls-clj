@@ -37,7 +37,6 @@
 ;; ==================== Trigonometry ====================
 (defn degrees-from-y-x [y x] (- 360 (Math/toDegrees (Math/atan2 y x))))
 
-
 ;; ======================= Vectors =======================
 (defn transpose [m]
   (apply mapv vector m))
@@ -122,6 +121,28 @@
                 (fn [data] (true? (:vals data)))
                 pwc-result)))
    (vec (range n))))
+
+(defn perpendicular-parallel-velocity-decomposition [v angle-radians]
+  (let [perpendicular-component (* v (Math/cos angle-radians))
+        parallel-component (* v (Math/sin angle-radians))]
+    [perpendicular-component, parallel-component]))
+
+(defn get-radians-angle-of-corner [corner-point point-a point-b]
+  (let [[xp yp] corner-point
+        [xa ya] point-a
+        [xb yb] point-b
+        dxap (- xa xp)
+        dxbp (- xb xp)
+        dyap (- ya yp)
+        dybp (- yb yp)
+        uv (+
+            (* dxap dxbp)
+            (* dyap dybp))
+        mag-u (Math/sqrt (+ (* dxap dxap) (* dyap dyap)))
+        mag-v (Math/sqrt (+ (* dxbp dxbp) (* dybp dybp)))
+        cos-delta (/ uv (* mag-u mag-v))
+        radians-angle (Math/acos cos-delta)]
+    radians-angle))
 
 
 ;; (defn apply-collisions [state-transition]

@@ -324,7 +324,8 @@
   (find-intersection [[4 8] [4.1 2]] [[0 6] [8 6]] 0)
   (vec (vals {:x 1 :y 4}))
   (distance-between-points [124.12881727411087 492.753424602454] [161.02517063820397 530.5023619097949])
-
+  (perpendicular-parallel-velocity-decomposition 10 (Math/toRadians 150))
+  (Math/toDegrees (get-radians-angle-of-corner [2 3] [5 7] [6 4]))
   (get-n-intervals-along-line 10 [[4 8] [12 2]])
 
   (safe-divide 10 0 Double/POSITIVE_INFINITY)
@@ -635,14 +636,35 @@
                                  end-up-touching
                                  are-converging-or-parallel
                                  start-distance-to-current
-                                 end-distance-to-current] collision-candidate-transition
-                                
-                                ]
+                                 end-distance-to-current] collision-candidate-transition]
                             (if (empty? collision-candidate-transition)
                               current-proposed-next-state-row
-                              (let [new-state-row (assoc current-proposed-next-state-row
+                              (let [current-intervals (get-n-intervals-along-line particle-size [current-start current-end])
+                                    other-intervals (get-n-intervals-along-line particle-size other-state-center-line)
+                                    interval-distances (mapv
+                                                        (fn [p1 p2]
+                                                          [p1 p2 (distance-between-points p1 p2)])
+                                                        current-intervals
+                                                        other-intervals)
+                                    [current-at-collision other-at-collision d-at-collision] (reduce (fn [closest-d-vec [p1 p2 d]]
+                                                                                                       (if (<
+                                                                                                            (Math/abs (- particle-size d))
+                                                                                                            (Math/abs (- particle-size (last closest-d-vec))))
+                                                                                                         [p1 p2 d]
+                                                                                                         [p1 p2 (last closest-d-vec)]))
+                                                                                                     [nil nil Double/POSITIVE_INFINITY]
+                                                                                                     interval-distances)
+                                    curr-collision-angle-radians (get-radians-angle-of-corner current-at-collision current-end other-at-collision)
+                                    other-collision-angle-radians (get-radians-angle-of-corner other-at-collision (last other-state-center-line) current-at-collision)
+                                    [curr-perp-x curr-para-x] (perpendicular-parallel-velocity-decomposition (:x-velocity current-proposed-next-state-row) curr-collision-angle-radians)
+                                    [curr-perp-y curr-para-y] (perpendicular-parallel-velocity-decomposition (:y-velocity current-proposed-next-state-row) curr-collision-angle-radians)
+                                    [other-perp-x other-para-x] (perpendicular-parallel-velocity-decomposition (:x-velocity (last other-state-transition-row)) other-collision-angle-radians)
+                                    [other-perp-y other-para-y] (perpendicular-parallel-velocity-decomposition (:y-velocity (last other-state-transition-row)) other-collision-angle-radians)
+                                    new-state-row (assoc current-proposed-next-state-row
                                                          :x-velocity (:x-velocity (last other-state-transition-row))
                                                          :y-velocity (:y-velocity (last other-state-transition-row))
+                                                        ;;  :x-velocity (- curr-para-x other-perp-x)
+                                                        ;;  :y-velocity (- curr-perp-y other-perp-y)
                                                          :ghost-frames (+ (:ghost-frames current-proposed-next-state-row) 16))] new-state-row))))))
                     (range (count transition-coords)))]
     (transpose [prev-states new-states])))

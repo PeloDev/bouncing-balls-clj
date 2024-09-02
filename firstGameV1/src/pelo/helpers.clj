@@ -14,6 +14,10 @@
     (catch ArithmeticException e
       default)))
 
+(defn round-to-n-places [num n]
+  (/ (Math/round (* num (Math/pow 10 n))) (Math/pow 10 n))
+  )
+
 (defn average-mean [coll]
   (/ (reduce + coll) (count coll)))
 
@@ -36,6 +40,32 @@
 
 ;; ==================== Trigonometry ====================
 (defn degrees-from-y-x [y x] (- 360 (Math/toDegrees (Math/atan2 y x))))
+
+(defn get-linear-function [[[x1 y1] [x2 y2]]]
+  (let [m (/ (- y2 y1) (- x2 x1))
+        c (- y2 (* m x2))]
+    (fn [x] (+ (* x m) c))))
+
+(defn get-y-given-x-on-line [line given-x]
+  (let [[[x1 y1] [x2 y2]] line
+        dy (- y2 y1)
+        dx (- x2 x1)
+        dx-given (- given-x x1)
+        diff-ratio (safe-divide dy dx)]
+    (if (nil? diff-ratio)
+      nil
+      (+ y1 (* diff-ratio dx-given)))))
+
+(defn get-x-given-y-on-line [line given-y]
+  (let [[[x1 y1] [x2 y2]] line
+        dy (- y2 y1)
+        dx (- x2 x1)
+        dy-given (- given-y y1)
+        diff-ratio (safe-divide dx dy)]
+    (if (nil? diff-ratio)
+      nil
+      (+ x1 (* diff-ratio dy-given)))))
+
 
 ;; ======================= Vectors =======================
 (defn transpose [m]
@@ -144,6 +174,8 @@
         radians-angle (Math/acos cos-delta)]
     radians-angle))
 
+(defn get-radian-angle-between-points [[x1 y1] [x2 y2]]
+  (Math/atan2 (- y2 y1) (- x2 x1)))
 
 ;; (defn apply-collisions [state-transition]
 ;;   (let [;; -----

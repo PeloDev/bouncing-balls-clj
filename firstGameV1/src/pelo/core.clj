@@ -52,11 +52,6 @@
 
 (defn toggle-direction [dir] (if (= dir -) + -))
 
-(defn get-linear-function [[[x1 y1] [x2 y2]]]
-  (let [m (/ (- y2 y1) (- x2 x1))
-        c (- y2 (* m x2))]
-    (fn [x] (+ (* x m) c))))
-
 (defn vec-contains-value [val v]
   (not= nil (some #(= val %) v)))
 
@@ -324,8 +319,13 @@
   (find-intersection [[4 8] [4.1 2]] [[0 6] [8 6]] 0)
   (vec (vals {:x 1 :y 4}))
   (distance-between-points [124.12881727411087 492.753424602454] [161.02517063820397 530.5023619097949])
-  (perpendicular-parallel-velocity-decomposition 10 (Math/toRadians 150))
+  (perpendicular-parallel-velocity-decomposition 10 (Math/toRadians 0))
+  (Math/toDegrees (get-radian-angle-between-points [0 0] [2 2]))
   (Math/toDegrees (get-radians-angle-of-corner [2 3] [5 7] [6 4]))
+  (Math/round 0.00003)
+  (round-to-n-places 0.035 2)
+  (get-y-given-x-on-line [[5 0] [5 10]] 4)
+  (get-y-given-x-on-line [[0 5] [10 5]] 40)
   (get-n-intervals-along-line 10 [[4 8] [12 2]])
 
   (safe-divide 10 0 Double/POSITIVE_INFINITY)
@@ -426,7 +426,7 @@
   [(get-x-y-from-state prev-state) (get-x-y-from-state next-state)])
 
 (comment
-
+  
   (defn test-stuff [] (let [test-state      (vec (map
                                                   (fn [_]
                                                     {:x (random-value 30)
@@ -517,6 +517,18 @@
         next-state (assoc state :x new-x :y new-y :x-velocity new-x-velocity :y-velocity new-y-velocity) ;; TODO: use new-x-velocity
         ]
     [state next-state]))
+
+(defn get-bounce-state [old-state new-state ball-like-collision-center & [[colliding-x-velocity colliding-y-velocity]]]
+  (let [{old-x :x old-y :y} old-state
+        {new-x :x new-y :y new-x-velocity :x-velocity new-y-velocity :y-velocity} new-state
+        [xc yc] ball-like-collision-center
+        radians-to-collision (get-radian-angle-between-points [old-x old-y] [xc yc])
+        [new-x-vel-perp new-x-vel-para] (perpendicular-parallel-velocity-decomposition
+                                         new-x-velocity
+                                         radians-to-collision)
+        [new-y-vel-perp new-y-vel-para] (perpendicular-parallel-velocity-decomposition
+                                         new-y-velocity
+                                         radians-to-collision)
 
 (defn apply-bounce [[old-state new-state]]
   (let [{old-x :x old-y :y old-angle :angle} old-state
@@ -661,10 +673,10 @@
                                     [other-perp-x other-para-x] (perpendicular-parallel-velocity-decomposition (:x-velocity (last other-state-transition-row)) other-collision-angle-radians)
                                     [other-perp-y other-para-y] (perpendicular-parallel-velocity-decomposition (:y-velocity (last other-state-transition-row)) other-collision-angle-radians)
                                     new-state-row (assoc current-proposed-next-state-row
-                                                         :x-velocity (:x-velocity (last other-state-transition-row))
-                                                         :y-velocity (:y-velocity (last other-state-transition-row))
-                                                        ;;  :x-velocity (- curr-para-x other-perp-x)
-                                                        ;;  :y-velocity (- curr-perp-y other-perp-y)
+                                                        ;;  :x-velocity (:x-velocity (last other-state-transition-row))
+                                                        ;;  :y-velocity (:y-velocity (last other-state-transition-row))
+                                                         :x-velocity (+ curr-para-x other-perp-x)
+                                                         :y-velocity (+ curr-para-y other-perp-y)
                                                          :ghost-frames (+ (:ghost-frames current-proposed-next-state-row) 16))] new-state-row))))))
                     (range (count transition-coords)))]
     (transpose [prev-states new-states])))

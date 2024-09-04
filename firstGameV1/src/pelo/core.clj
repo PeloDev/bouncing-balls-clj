@@ -616,9 +616,11 @@
                                           start-off-touching (<= start-distance-to-current particle-size)
                                           end-up-touching (<= end-distance-to-current particle-size)
                                           are-converging-or-parallel (<= end-distance-to-current start-distance-to-current)
-                                          are-colliding (or
-                                                         end-up-touching
-                                                         (and start-off-touching are-converging-or-parallel))]
+                                          ;; are-colliding (or
+                                          ;;                end-up-touching
+                                          ;;                (and start-off-touching are-converging-or-parallel))
+                                          are-colliding (and are-converging-or-parallel (or start-off-touching end-up-touching))
+                                          ]
                                       (if (not are-colliding)
                                         nil
                                         (let [granularity 20

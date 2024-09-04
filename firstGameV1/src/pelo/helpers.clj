@@ -25,7 +25,7 @@
   (/ (/ start-num end-num) (Math/abs (/ start-num end-num))))
 
 (defn move-towards-zero [num mv]
-  (if (= (int num) 0)
+  (if (or (= (int num) 0) (> mv (Math/abs num)))
     0
     (let [abs-num (Math/abs num)
           dir (/ num abs-num)

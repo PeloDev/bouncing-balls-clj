@@ -312,6 +312,24 @@
 
 
 (comment
+  ;; thread macros and "let" ->>
+  (let [a 2
+        b 3
+        c "4"]
+    (let [d (+ a b)
+          e (- a b)
+          f (str c "!")]
+      [a b c d e f]))
+
+  (->>
+   [a b c d e f]
+   (let [d (+ a b)
+         e (- a b)
+         f (str c "!")])
+   (let [a 2
+         b 3
+         c "4"]))
+;; <<-
   (def bmtemp (apply list (mapv first [[5 1] [2 3]])))
   (interpose 3 bmtemp)
   (apply > (interpose 10 bmtemp))
@@ -426,7 +444,7 @@
   [(get-x-y-from-state prev-state) (get-x-y-from-state next-state)])
 
 (comment
-  
+
   (defn test-stuff [] (let [test-state      (vec (map
                                                   (fn [_]
                                                     {:x (random-value 30)
@@ -474,14 +492,6 @@
   (/ (+ dap (/ 1 2)) da)
   (/ dbp db)
   (find-collision [[4 8] [8 4]] [[3 3] [10 10]])
-  ; [tlx1 tly1] [386.9021130325903 243.6580339887499]
-; [brx1 bry1] [391.9021130325903 248.6580339887499]
-; [tlx2 tly2] [81.2036300463041 547.6372710200945]
-; [brx2 bry2] [86.2036300463041 552.6372710200945]
-; [tlx1 tly1] [386.9021130325903 243.6580339887499]
-; [brx1 bry1] [391.9021130325903 248.6580339887499]
-; [tlx2 tly2] [81.2036300463041 547.6372710200945]
-; [brx2 bry2] [86.2036300463041 552.6372710200945]
   (find-point-of-contact
    [[386.9021130325903 243.6580339887499] [391.9021130325903 248.6580339887499]]
    [[81.2036300463041 547.6372710200945] [86.2036300463041 552.6372710200945]]
@@ -494,14 +504,6 @@
   (extract-nth 2 [1 2 3 4 5])
   (take 2 [1 2 3 4])
   (into [1 2] [3 4])
-  ;; (def example-initial-state [[
-  ;;   {:x 186, :y 475, :angle 38, :x-velocity nil, :y-velocity nil, :colour #object[java.awt.Color 0xcb53ff5 java.awt.Color [r=255,g=255,b=255]], :ghost-frames 10}
-  ;;   {:x 190.72806452164033, :y 478.73396885195393, :angle 38, :x-velocity 4.728064521640332, :y-velocity 3.73396885195395, :colour #object[java.awt.Color 0xcb53ff5 java.awt.Color [r=255,g=255,b=255]], :ghost-frames 10}]
-  ;;  [{:x 323, :y 165, :angle 87, :x-velocity nil, :y-velocity nil, :colour #object[java.awt.Color 0xcb53ff5 java.awt.Color [r=255,g=255,b=255]], :ghost-frames 10}
-  ;;   {:x 323.3140157374577, :y 171.03177720852744, :angle 87, :x-velocity 0.3140157374576638, :y-velocity 6.031777208527443, :colour #object[java.awt.Color 0xcb53ff5 java.awt.Color [r=255,g=255,b=255]], :ghost-frames 10}]
-  ;;  [{:x 503, :y 347, :angle 16, :x-velocity nil, :y-velocity nil, :colour #object[java.awt.Color 0xcb53ff5 java.awt.Color [r=255,g=255,b=255]], :ghost-frames 10} 
-  ;;   {:x 508.7675701756299, :y 348.693824134902, :angle 16, :x-velocity 5.767570175629913, :y-velocity 1.6938241349019951, :colour #object[java.awt.Color 0xcb53ff5 java.awt.Color [r=255,g=255,b=255]], :ghost-frames 10}]])
-  ;; (def test-trans-intersections (mapv find-intersection test-state-x-ys))
   ;; END
   )
 
@@ -518,17 +520,6 @@
         ]
     [state next-state]))
 
-(defn get-bounce-state [old-state new-state ball-like-collision-center & [[colliding-x-velocity colliding-y-velocity]]]
-  (let [{old-x :x old-y :y} old-state
-        {new-x :x new-y :y new-x-velocity :x-velocity new-y-velocity :y-velocity} new-state
-        [xc yc] ball-like-collision-center
-        radians-to-collision (get-radian-angle-between-points [old-x old-y] [xc yc])
-        [new-x-vel-perp new-x-vel-para] (perpendicular-parallel-velocity-decomposition
-                                         new-x-velocity
-                                         radians-to-collision)
-        [new-y-vel-perp new-y-vel-para] (perpendicular-parallel-velocity-decomposition
-                                         new-y-velocity
-                                         radians-to-collision)
 
 (defn apply-bounce [[old-state new-state]]
   (let [{old-x :x old-y :y old-angle :angle} old-state
@@ -603,82 +594,103 @@
                    collision-index-matrix)]
     (transpose [prev-states new-state])))
 
+;; We're getting close to the perfect bounce collision. Here are some observation notes:
+;; - it appears some collisions only bounce one ball and not the other,
+;;   so it appears there is some dominant factor, maybe the angle or direction of approach or something
+;; - balls tend to get stuck together and don't move (not sharing velocities correctly?)
+;; - balls don't roll of stationary balls, they just stay fixed in place like the point above
+(defn bounce-ball [current-state-transition other-state-transitions]
+  (let [c-next (last current-state-transition)]
+    (if (> (:ghost-frames c-next) 0)
+      (assoc c-next :ghost-frames (dec (:ghost-frames c-next)))
+      (let [c-line (get-x-y-from-state-transition current-state-transition)
+            c-center-line (mapv #(get-center-point-from-top-left % particle-size) c-line)
+            [current-start current-end] c-center-line
+            collision-point-data (mapv
+                                  (fn [other-state-transition-row]
+                                    (let [other-state-line (get-x-y-from-state-transition other-state-transition-row)
+                                          other-state-center-line (mapv #(get-center-point-from-top-left % particle-size) other-state-line)
+                                          [other-start other-end] other-state-center-line
+                                          start-distance-to-current (distance-between-points current-start other-start)
+                                          end-distance-to-current (distance-between-points current-end other-end)
+                                          start-off-touching (<= start-distance-to-current particle-size)
+                                          end-up-touching (<= end-distance-to-current particle-size)
+                                          are-converging-or-parallel (<= end-distance-to-current start-distance-to-current)
+                                          are-colliding (or
+                                                         end-up-touching
+                                                         (and start-off-touching are-converging-or-parallel))]
+                                      (if (not are-colliding)
+                                        nil
+                                        (let [granularity 20
+                                              [[csx csy] [cex cey]] c-center-line
+                                              [[osx osy] [oex oey]] other-state-center-line
+                                              curr-dx (- cex csx)
+                                              curr-dy (- cey csy)
+                                              other-dx (- oex osx)
+                                              other-dy (- oey osy)
+                                              curr-interval-size-x (/ curr-dx granularity)
+                                              curr-interval-size-y (/ curr-dy granularity)
+                                              other-interval-size-x (/ other-dx granularity)
+                                              other-interval-size-y (/ other-dy granularity)
+                                              [curr-poc other-poc] (reduce
+                                                                    (fn [[c o] granularity-idx]
+                                                                      (if (or (nil? c) (nil? o))
+                                                                        [[csx csy] [osx osy]]
+                                                                        (let [cx-interval-movement (* curr-interval-size-x granularity-idx)
+                                                                              cy-interval-movement (* curr-interval-size-y granularity-idx)
+                                                                              ox-interval-movement (* other-interval-size-x granularity-idx)
+                                                                              oy-interval-movement (* other-interval-size-y granularity-idx)
+                                                                              c-coord [(+ csx cx-interval-movement) (+ csy cy-interval-movement)]
+                                                                              o-coord [(+ osx ox-interval-movement) (+ osy oy-interval-movement)]
+                                                                              d0 (distance-between-points c o)
+                                                                              d1 (distance-between-points c-coord o-coord)
+                                                                              d0-psize-proximity (Math/abs (- d0 (+ particle-size 0.3)))
+                                                                              d1-psize-proximity (Math/abs (- d1 (+ particle-size 0.3)))]
+                                                                          (if (< d1-psize-proximity d0-psize-proximity)
+                                                                            [c-coord o-coord]
+                                                                            [c o]))))
+                                                                    [nil nil]
+                                                                    (range (inc granularity)))]
+                                          [curr-poc other-poc (last other-state-transition-row)]))))
+                                  other-state-transitions)
+            ;; TODO: don't select first, apply below to all valid collisions
+            filtered-collision-point-data (first (filterv #(and (not= nil %)) collision-point-data))
+            ]
+        (if (nil? filtered-collision-point-data)
+          c-next
+          (let [[[cx-poc cy-poc] [ox-poc oy-poc] other-next-state] filtered-collision-point-data
+                half-p-size (/ particle-size 2)
+                collision-angle-radians (get-radian-angle-between-points [cx-poc cy-poc] [ox-poc oy-poc])
+                c-next-vel-x (:x-velocity c-next)
+                c-next-vel-y (:y-velocity c-next)
+                o-next-vel-x (:x-velocity other-next-state)
+                o-next-vel-y (:y-velocity other-next-state)
+                [c-x-vel-perp c-x-vel-para] (perpendicular-parallel-velocity-decomposition
+                                             c-next-vel-x
+                                             collision-angle-radians)
+                [c-y-vel-perp c-y-vel-para] (perpendicular-parallel-velocity-decomposition
+                                             c-next-vel-y
+                                             collision-angle-radians)
+                [o-x-vel-perp o-x-vel-para] (perpendicular-parallel-velocity-decomposition
+                                             o-next-vel-x
+                                             collision-angle-radians)
+                [o-y-vel-perp o-y-vel-para] (perpendicular-parallel-velocity-decomposition
+                                             o-next-vel-y
+                                             collision-angle-radians)]
+            (assoc c-next
+                   :x (- cx-poc half-p-size)
+                   :y (- cy-poc half-p-size)
+                   :x-velocity (move-towards-zero (- c-x-vel-para o-x-vel-perp) bounce-velocity-loss)
+                   :y-velocity (move-towards-zero (- c-y-vel-para o-y-vel-perp) bounce-velocity-loss) 
+                   )))))))
+
 (defn apply-collisions [state-transition]
   (let [;; -----
         [prev-states] (transpose state-transition)
-        transition-coords (mapv get-x-y-from-state-transition state-transition)
-        new-states (mapv
-                    (fn [idx]
-                      (let [[current-state-transition-row rest-state-transitions] (extract-nth idx state-transition)
-                            current-proposed-next-state-row (last current-state-transition-row)]
-                        (if (> (:ghost-frames current-proposed-next-state-row) 0)
-                          (assoc current-proposed-next-state-row :ghost-frames (dec (:ghost-frames current-proposed-next-state-row)))
-                          (let [current-state-line (get-x-y-from-state-transition current-state-transition-row)
-                                current-state-center-line (mapv #(get-center-point-from-top-left % particle-size) current-state-line)
-                                [current-start current-end] current-state-center-line
-                                other-collision-state-transition-data-vec (filterv
-                                                                           (fn [data-vec] (first data-vec))
-                                                                           (mapv
-                                                                            (fn [state-transition-row]
-                                                                              (let [other-state-line (get-x-y-from-state-transition state-transition-row)
-                                                                                    other-state-center-line (mapv #(get-center-point-from-top-left % particle-size) other-state-line)
-                                                                                    [other-start other-end] other-state-center-line
-                                                                                    start-distance-to-current (distance-between-points current-start other-start)
-                                                                                    end-distance-to-current (distance-between-points current-end other-end)
-                                                                                    start-off-touching (<= start-distance-to-current particle-size)
-                                                                                    end-up-touching (<= end-distance-to-current particle-size)
-                                                                                    are-converging-or-parallel (<= end-distance-to-current start-distance-to-current)
-                                                                                    are-colliding (or
-                                                                                                   end-up-touching
-                                                                                                   (and start-off-touching are-converging-or-parallel))]
-                                                                                [are-colliding
-                                                                                 state-transition-row
-                                                                                 other-state-center-line
-                                                                                 start-off-touching
-                                                                                 end-up-touching
-                                                                                 are-converging-or-parallel
-                                                                                 start-distance-to-current
-                                                                                 end-distance-to-current]))
-                                                                            rest-state-transitions))
-                                collision-candidate-transition (first other-collision-state-transition-data-vec)
-                                [are-colliding
-                                 other-state-transition-row
-                                 other-state-center-line
-                                 start-off-touching
-                                 end-up-touching
-                                 are-converging-or-parallel
-                                 start-distance-to-current
-                                 end-distance-to-current] collision-candidate-transition]
-                            (if (empty? collision-candidate-transition)
-                              current-proposed-next-state-row
-                              (let [current-intervals (get-n-intervals-along-line particle-size [current-start current-end])
-                                    other-intervals (get-n-intervals-along-line particle-size other-state-center-line)
-                                    interval-distances (mapv
-                                                        (fn [p1 p2]
-                                                          [p1 p2 (distance-between-points p1 p2)])
-                                                        current-intervals
-                                                        other-intervals)
-                                    [current-at-collision other-at-collision d-at-collision] (reduce (fn [closest-d-vec [p1 p2 d]]
-                                                                                                       (if (<
-                                                                                                            (Math/abs (- particle-size d))
-                                                                                                            (Math/abs (- particle-size (last closest-d-vec))))
-                                                                                                         [p1 p2 d]
-                                                                                                         [p1 p2 (last closest-d-vec)]))
-                                                                                                     [nil nil Double/POSITIVE_INFINITY]
-                                                                                                     interval-distances)
-                                    curr-collision-angle-radians (get-radians-angle-of-corner current-at-collision current-end other-at-collision)
-                                    other-collision-angle-radians (get-radians-angle-of-corner other-at-collision (last other-state-center-line) current-at-collision)
-                                    [curr-perp-x curr-para-x] (perpendicular-parallel-velocity-decomposition (:x-velocity current-proposed-next-state-row) curr-collision-angle-radians)
-                                    [curr-perp-y curr-para-y] (perpendicular-parallel-velocity-decomposition (:y-velocity current-proposed-next-state-row) curr-collision-angle-radians)
-                                    [other-perp-x other-para-x] (perpendicular-parallel-velocity-decomposition (:x-velocity (last other-state-transition-row)) other-collision-angle-radians)
-                                    [other-perp-y other-para-y] (perpendicular-parallel-velocity-decomposition (:y-velocity (last other-state-transition-row)) other-collision-angle-radians)
-                                    new-state-row (assoc current-proposed-next-state-row
-                                                        ;;  :x-velocity (:x-velocity (last other-state-transition-row))
-                                                        ;;  :y-velocity (:y-velocity (last other-state-transition-row))
-                                                         :x-velocity (+ curr-para-x other-perp-x)
-                                                         :y-velocity (+ curr-para-y other-perp-y)
-                                                         :ghost-frames (+ (:ghost-frames current-proposed-next-state-row) 16))] new-state-row))))))
-                    (range (count transition-coords)))]
+        states-count (count state-transition)
+        current-rest-state-pairs (mapv #(extract-nth % state-transition) (range states-count))
+        new-states (mapv #(apply bounce-ball %) current-rest-state-pairs)
+        ]
     (transpose [prev-states new-states])))
 
 (defn update-state [states]
@@ -687,7 +699,7 @@
        (apply-collisions)
        (mapv apply-bounce)
        (mapv last)))
-(-> ())
+
 (defn game-panel []
   (proxy [JPanel ActionListener] []
     (paintComponent [^Graphics g]

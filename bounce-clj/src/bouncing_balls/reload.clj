@@ -1,6 +1,6 @@
-(ns pelo.reload
+(ns bouncing-balls.reload
   (:require [clojure.tools.namespace.repl :refer [refresh]]
-            [pelo.firstGameV1 :refer [-main]]))
+            [bouncing-balls.main :refer [-main]]))
 
 (defn reload-and-run []
   (refresh)

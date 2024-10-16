@@ -1,19 +1,21 @@
-(ns pelo.core
+(ns bouncing-balls.playground
   (:import [javax.swing JFrame JPanel Timer]
            [java.awt Graphics Graphics2D Color RenderingHints]
            [java.awt.event ActionListener]
            [java.util Random])
-  (:require [pelo.helpers :refer :all]))
+  (:require [bouncing-balls.helpers :refer :all]))
 
+(def max-x-bound 400)
+(def max-y-bound 400)
 (def frames-per-second 30)
 (def ticks-per-second (/ 1000 frames-per-second))
-(def particle-count 3)
+(def particle-count 1)
 (def particle-size 128)
 (def initial-velocity 6) ;; px per tick
 (def gravitational-force 0.04)
-(def max-x (- 800 particle-size))
+(def max-x (- max-x-bound particle-size))
 (def min-x 0)
-(def max-y (- 600 particle-size))
+(def max-y (- max-y-bound particle-size))
 (def min-y 0)
 (defn random-value [upper-bound] (.nextInt (Random.) upper-bound))
 (defn random-pos-neg [x] (if (= 1 (random-value 2)) x (* x -1)))
@@ -37,7 +39,7 @@
   (let [g2d (doto ^Graphics2D g
               (.setRenderingHint RenderingHints/KEY_ANTIALIASING RenderingHints/VALUE_ANTIALIAS_ON))]
     (.setColor g2d Color/BLACK)
-    (.fillRect g2d 0 0 800 600)))
+    (.fillRect g2d 0 0 max-x-bound max-y-bound)))
 
 (defn draw-particle [^Graphics g {:keys [x y colour]}]
   (let [g2d (doto ^Graphics2D g
@@ -312,24 +314,6 @@
 
 
 (comment
-  ;; thread macros and "let" ->>
-  (let [a 2
-        b 3
-        c "4"]
-    (let [d (+ a b)
-          e (- a b)
-          f (str c "!")]
-      [a b c d e f]))
-
-  (->>
-   [a b c d e f]
-   (let [d (+ a b)
-         e (- a b)
-         f (str c "!")])
-   (let [a 2
-         b 3
-         c "4"]))
-;; <<-
   (def bmtemp (apply list (mapv first [[5 1] [2 3]])))
   (interpose 3 bmtemp)
   (apply > (interpose 10 bmtemp))
@@ -337,13 +321,8 @@
   (find-intersection [[4 8] [4.1 2]] [[0 6] [8 6]] 0)
   (vec (vals {:x 1 :y 4}))
   (distance-between-points [124.12881727411087 492.753424602454] [161.02517063820397 530.5023619097949])
-  (perpendicular-parallel-velocity-decomposition 10 (Math/toRadians 0))
-  (Math/toDegrees (get-radian-angle-between-points [0 0] [2 2]))
+  (perpendicular-parallel-velocity-decomposition 10 (Math/toRadians 150))
   (Math/toDegrees (get-radians-angle-of-corner [2 3] [5 7] [6 4]))
-  (Math/round 0.00003)
-  (round-to-n-places 0.035 2)
-  (get-y-given-x-on-line [[5 0] [5 10]] 4)
-  (get-y-given-x-on-line [[0 5] [10 5]] 40)
   (get-n-intervals-along-line 10 [[4 8] [12 2]])
 
   (safe-divide 10 0 Double/POSITIVE_INFINITY)
@@ -492,6 +471,14 @@
   (/ (+ dap (/ 1 2)) da)
   (/ dbp db)
   (find-collision [[4 8] [8 4]] [[3 3] [10 10]])
+  ; [tlx1 tly1] [386.9021130325903 243.6580339887499]
+; [brx1 bry1] [391.9021130325903 248.6580339887499]
+; [tlx2 tly2] [81.2036300463041 547.6372710200945]
+; [brx2 bry2] [86.2036300463041 552.6372710200945]
+; [tlx1 tly1] [386.9021130325903 243.6580339887499]
+; [brx1 bry1] [391.9021130325903 248.6580339887499]
+; [tlx2 tly2] [81.2036300463041 547.6372710200945]
+; [brx2 bry2] [86.2036300463041 552.6372710200945]
   (find-point-of-contact
    [[386.9021130325903 243.6580339887499] [391.9021130325903 248.6580339887499]]
    [[81.2036300463041 547.6372710200945] [86.2036300463041 552.6372710200945]]
@@ -504,6 +491,14 @@
   (extract-nth 2 [1 2 3 4 5])
   (take 2 [1 2 3 4])
   (into [1 2] [3 4])
+  ;; (def example-initial-state [[
+  ;;   {:x 186, :y 475, :angle 38, :x-velocity nil, :y-velocity nil, :colour #object[java.awt.Color 0xcb53ff5 java.awt.Color [r=255,g=255,b=255]], :ghost-frames 10}
+  ;;   {:x 190.72806452164033, :y 478.73396885195393, :angle 38, :x-velocity 4.728064521640332, :y-velocity 3.73396885195395, :colour #object[java.awt.Color 0xcb53ff5 java.awt.Color [r=255,g=255,b=255]], :ghost-frames 10}]
+  ;;  [{:x 323, :y 165, :angle 87, :x-velocity nil, :y-velocity nil, :colour #object[java.awt.Color 0xcb53ff5 java.awt.Color [r=255,g=255,b=255]], :ghost-frames 10}
+  ;;   {:x 323.3140157374577, :y 171.03177720852744, :angle 87, :x-velocity 0.3140157374576638, :y-velocity 6.031777208527443, :colour #object[java.awt.Color 0xcb53ff5 java.awt.Color [r=255,g=255,b=255]], :ghost-frames 10}]
+  ;;  [{:x 503, :y 347, :angle 16, :x-velocity nil, :y-velocity nil, :colour #object[java.awt.Color 0xcb53ff5 java.awt.Color [r=255,g=255,b=255]], :ghost-frames 10} 
+  ;;   {:x 508.7675701756299, :y 348.693824134902, :angle 16, :x-velocity 5.767570175629913, :y-velocity 1.6938241349019951, :colour #object[java.awt.Color 0xcb53ff5 java.awt.Color [r=255,g=255,b=255]], :ghost-frames 10}]])
+  ;; (def test-trans-intersections (mapv find-intersection test-state-x-ys))
   ;; END
   )
 
@@ -519,7 +514,6 @@
         next-state (assoc state :x new-x :y new-y :x-velocity new-x-velocity :y-velocity new-y-velocity) ;; TODO: use new-x-velocity
         ]
     [state next-state]))
-
 
 (defn apply-bounce [[old-state new-state]]
   (let [{old-x :x old-y :y old-angle :angle} old-state
@@ -549,159 +543,82 @@
         next-state (assoc new-state :x bounce-x :y bounce-y :x-velocity bounce-x-velocity :y-velocity bounce-y-velocity :angle bounce-angle)]
     [new-state next-state]))
 
-(defn debug-paint-red-intersection [state-transition intersection-data]
-  (let [[prev-state next-state] state-transition
-        updated-next-state (if (not= (some identity intersection-data) nil)
-                             (assoc next-state :colour Color/RED)
-                             (assoc next-state :colour Color/WHITE))]
-    [prev-state updated-next-state]))
-
-(defn apply-collisions-pairwise-combination [state-transition]
-  (let [;; -----
-        [prev-states next-states] (transpose state-transition)
-        transition-coords (mapv get-x-y-from-state-transition state-transition)
-        indexed-intersections (indexed-pairwise-combination transition-coords find-simple-circle-collision 0)
-        collision-index-matrix (get-indexed-pairwise-combination-matrix indexed-intersections (count state-transition))
-        new-state (mapv
-                   (fn [state-row collision-indexes]
-                     (if (or (> (:ghost-frames state-row) 0) (empty? collision-indexes))
-                       (assoc state-row :ghost-frames (min 0 (dec (:ghost-frames state-row))))
-                       (let [number-of-collisions (count collision-indexes)
-                             avg-colliding-state (reduce
-                                                  (fn [avg-state idx]
-                                                    ;; (println "avg-state: " avg-state ", idx: " idx)
-                                                    (let [state-row-at-idx (nth next-states idx)
-                                                          avg-step (fn [k d]
-                                                                     (/  (k d) number-of-collisions))]
-                                                      (assoc avg-state
-                                                             :x (+ (avg-step :x avg-state)
-                                                                   (avg-step :x state-row-at-idx))
-                                                             :y (+ (avg-step :y avg-state)
-                                                                   (avg-step :y state-row-at-idx))
-                                                             :x-velocity (+
-                                                                          (avg-step :x-velocity avg-state)
-                                                                          (avg-step :x-velocity state-row-at-idx))
-                                                             :y-velocity (+
-                                                                          (avg-step :y-velocity avg-state)
-                                                                          (avg-step :y-velocity state-row-at-idx)))))
-                                                  {:x 0 :y 0 :x-velocity 0 :y-velocity 0}
-                                                  collision-indexes)]
-                         (assoc state-row
-                                :x-velocity (move-towards-zero (+ 0 (:x-velocity avg-colliding-state)) bounce-velocity-loss);; TODO: replace 0 with `(:x-velocity state-row)` or revert
-                                :y-velocity (move-towards-zero (+ 0 (:y-velocity avg-colliding-state)) bounce-velocity-loss);; TODO: replace 0 with `(:y-velocity state-row)` or revert
-                                :ghost-frames (+ (:ghost-frames state-row) 16)))))
-                   next-states
-                   collision-index-matrix)]
-    (transpose [prev-states new-state])))
-
-;; We're getting close to the perfect bounce collision. Here are some observation notes:
-;; - it appears some collisions only bounce one ball and not the other,
-;;   so it appears there is some dominant factor, maybe the angle or direction of approach or something
-;; - balls tend to get stuck together and don't move (not sharing velocities correctly?)
-;; - balls don't roll of stationary balls, they just stay fixed in place like the point above
-(defn bounce-ball [current-state-transition other-state-transitions]
-  (let [c-next (last current-state-transition)]
-    (if (> (:ghost-frames c-next) 0)
-      (assoc c-next :ghost-frames (dec (:ghost-frames c-next)))
-      (let [c-line (get-x-y-from-state-transition current-state-transition)
-            c-center-line (mapv #(get-center-point-from-top-left % particle-size) c-line)
-            [current-start current-end] c-center-line
-            collision-point-data (mapv
-                                  (fn [other-state-transition-row]
-                                    (let [other-state-line (get-x-y-from-state-transition other-state-transition-row)
-                                          other-state-center-line (mapv #(get-center-point-from-top-left % particle-size) other-state-line)
-                                          [other-start other-end] other-state-center-line
-                                          start-distance-to-current (distance-between-points current-start other-start)
-                                          end-distance-to-current (distance-between-points current-end other-end)
-                                          start-off-touching (<= start-distance-to-current particle-size)
-                                          end-up-touching (<= end-distance-to-current particle-size)
-                                          are-converging-or-parallel (<= end-distance-to-current start-distance-to-current)
-                                          ;; are-colliding (or
-                                          ;;                end-up-touching
-                                          ;;                (and start-off-touching are-converging-or-parallel))
-                                          are-colliding (and are-converging-or-parallel (or start-off-touching end-up-touching))
-                                          ]
-                                      (if (not are-colliding)
-                                        nil
-                                        (let [granularity 20
-                                              [[csx csy] [cex cey]] c-center-line
-                                              [[osx osy] [oex oey]] other-state-center-line
-                                              curr-dx (- cex csx)
-                                              curr-dy (- cey csy)
-                                              other-dx (- oex osx)
-                                              other-dy (- oey osy)
-                                              curr-interval-size-x (/ curr-dx granularity)
-                                              curr-interval-size-y (/ curr-dy granularity)
-                                              other-interval-size-x (/ other-dx granularity)
-                                              other-interval-size-y (/ other-dy granularity)
-                                              [curr-poc other-poc] (reduce
-                                                                    (fn [[c o] granularity-idx]
-                                                                      (if (or (nil? c) (nil? o))
-                                                                        [[csx csy] [osx osy]]
-                                                                        (let [cx-interval-movement (* curr-interval-size-x granularity-idx)
-                                                                              cy-interval-movement (* curr-interval-size-y granularity-idx)
-                                                                              ox-interval-movement (* other-interval-size-x granularity-idx)
-                                                                              oy-interval-movement (* other-interval-size-y granularity-idx)
-                                                                              c-coord [(+ csx cx-interval-movement) (+ csy cy-interval-movement)]
-                                                                              o-coord [(+ osx ox-interval-movement) (+ osy oy-interval-movement)]
-                                                                              d0 (distance-between-points c o)
-                                                                              d1 (distance-between-points c-coord o-coord)
-                                                                              d0-psize-proximity (Math/abs (- d0 (+ particle-size 0.3)))
-                                                                              d1-psize-proximity (Math/abs (- d1 (+ particle-size 0.3)))]
-                                                                          (if (< d1-psize-proximity d0-psize-proximity)
-                                                                            [c-coord o-coord]
-                                                                            [c o]))))
-                                                                    [nil nil]
-                                                                    (range (inc granularity)))]
-                                          [curr-poc other-poc (last other-state-transition-row)]))))
-                                  other-state-transitions)
-            ;; TODO: don't select first, apply below to all valid collisions
-            filtered-collision-point-data (first (filterv #(and (not= nil %)) collision-point-data))
-            ]
-        (if (nil? filtered-collision-point-data)
-          c-next
-          (let [[[cx-poc cy-poc] [ox-poc oy-poc] other-next-state] filtered-collision-point-data
-                half-p-size (/ particle-size 2)
-                collision-angle-radians (get-radian-angle-between-points [cx-poc cy-poc] [ox-poc oy-poc])
-                c-next-vel-x (:x-velocity c-next)
-                c-next-vel-y (:y-velocity c-next)
-                o-next-vel-x (:x-velocity other-next-state)
-                o-next-vel-y (:y-velocity other-next-state)
-                [c-x-vel-perp c-x-vel-para] (perpendicular-parallel-velocity-decomposition
-                                             c-next-vel-x
-                                             collision-angle-radians)
-                [c-y-vel-perp c-y-vel-para] (perpendicular-parallel-velocity-decomposition
-                                             c-next-vel-y
-                                             collision-angle-radians)
-                [o-x-vel-perp o-x-vel-para] (perpendicular-parallel-velocity-decomposition
-                                             o-next-vel-x
-                                             collision-angle-radians)
-                [o-y-vel-perp o-y-vel-para] (perpendicular-parallel-velocity-decomposition
-                                             o-next-vel-y
-                                             collision-angle-radians)]
-            (assoc c-next
-                   :x (- cx-poc half-p-size)
-                   :y (- cy-poc half-p-size)
-                   :x-velocity (move-towards-zero (- c-x-vel-para o-x-vel-perp) bounce-velocity-loss)
-                   :y-velocity (move-towards-zero (- c-y-vel-para o-y-vel-perp) bounce-velocity-loss) 
-                   )))))))
-
-(defn apply-collisions [state-transition]
-  (let [;; -----
-        [prev-states] (transpose state-transition)
-        states-count (count state-transition)
-        current-rest-state-pairs (mapv #(extract-nth % state-transition) (range states-count))
-        new-states (mapv #(apply bounce-ball %) current-rest-state-pairs)
+(defn get-bounce-state [old-state new-state ball-like-collision-center & [[colliding-x-velocity colliding-y-velocity]]]
+  (let [{old-x :x old-y :y} old-state
+        {new-x :x new-y :y new-x-velocity :x-velocity new-y-velocity :y-velocity} new-state
+        [xc yc] ball-like-collision-center
+        radians-to-collision (get-radian-angle-between-points [old-x old-y] [xc yc])
+        [new-x-vel-perp new-x-vel-para] (perpendicular-parallel-velocity-decomposition
+                                         new-x-velocity
+                                         radians-to-collision)
+        [new-y-vel-perp new-y-vel-para] (perpendicular-parallel-velocity-decomposition
+                                         new-y-velocity
+                                         radians-to-collision)
         ]
-    (transpose [prev-states new-states])))
+    (assoc new-state
+           :x-velocity (move-towards-zero (- new-x-vel-para new-x-vel-perp) bounce-velocity-loss)
+           :y-velocity (move-towards-zero (- new-y-vel-para new-y-vel-perp) bounce-velocity-loss)))
+  )
+
+(defn apply-decomposition-bounce [[old-state new-state]]
+  (let [{old-x :x old-y :y old-angle :angle} old-state
+        {new-x :x new-y :y new-x-velocity :x-velocity new-y-velocity :y-velocity new-angle :angle} new-state
+        ;; -----
+        is-moving-x (> (round-to-n-places new-x-velocity 4) 0)
+        is-moving-y (> (round-to-n-places new-y-velocity 4) 0)
+        is-x-upper-bounce (and (>= new-x max-x) is-moving-x)
+        is-x-lower-bounce (and (<= new-x min-x) is-moving-x)
+        is-y-upper-bounce (and (>= new-y max-y) is-moving-y)
+        is-y-lower-bounce (and (<= new-y min-y) is-moving-y)
+        is-x-bounce (or is-x-upper-bounce is-x-lower-bounce)
+        is-y-bounce (or is-y-upper-bounce is-y-lower-bounce)
+        dx (- new-x old-x)
+        dy (- new-y old-y)
+        ;; path-linear-func (get-linear-function [(mapv old-state [:x :y]) (mapv new-state [:x :y])])  
+        collision-center-x (if is-x-upper-bounce
+                             (+ max-x-bound (/ particle-size 2))
+                             (- 0 (/ particle-size 2)))
+        collision-center-y (get-y-given-x-on-line
+                            [(get-center-point-from-top-left [old-x old-y] particle-size)
+                             (get-center-point-from-top-left [new-x new-y] particle-size)]
+                            (if is-x-upper-bounce
+                              (- max-x-bound (/ particle-size 2))
+                              (/ particle-size 2)))
+        radians-to-collision (get-radian-angle-between-points [old-x old-y] [collision-center-x collision-center-y])
+        [new-x-vel-perp new-x-vel-para] (perpendicular-parallel-velocity-decomposition
+                                         new-x-velocity
+                                         radians-to-collision)
+        [new-y-vel-perp new-y-vel-para] (perpendicular-parallel-velocity-decomposition
+                                         new-y-velocity
+                                         radians-to-collision)
+        bounce-x (if is-x-upper-bounce
+                   (min (bounce old-x dx max-x) (- max-x 1))
+                   (if is-x-lower-bounce
+                     (max (bounce old-x dx min-x) (+ min-x 1))
+                     new-x))
+        bounce-y (if is-y-upper-bounce
+                   (min (bounce old-y dy max-y) (- max-y 1))
+                   (if is-y-lower-bounce
+                     (max (bounce old-y dy min-y) (+ min-y 1))
+                     new-y))
+        bounce-angle (if is-x-bounce (- 180 new-angle) (if is-y-bounce (- 360 new-angle) new-angle))
+        bounce-x-velocity (if is-x-bounce
+                            (move-towards-zero (- new-x-vel-para new-x-vel-perp) bounce-velocity-loss)
+                            new-x-velocity)
+        bounce-y-velocity (if is-y-bounce
+                            (move-towards-zero (- new-y-vel-para new-y-vel-perp) bounce-velocity-loss)
+                            new-y-velocity)
+        next-state (assoc new-state :x bounce-x :y bounce-y :x-velocity bounce-x-velocity :y-velocity bounce-y-velocity :angle bounce-angle)]
+    (if (or is-x-upper-bounce is-y-upper-bounce) (println "upper bounce: " [is-x-upper-bounce is-y-upper-bounce]))
+    (if (or is-x-lower-bounce is-y-lower-bounce) (println "lower bounce: " [is-x-lower-bounce is-y-lower-bounce]))
+    [new-state next-state]))
 
 (defn update-state [states]
   (->> states
        (mapv apply-move)
-       (apply-collisions)
-       (mapv apply-bounce)
+       (mapv apply-decomposition-bounce)
        (mapv last)))
-
+(-> ())
 (defn game-panel []
   (proxy [JPanel ActionListener] []
     (paintComponent [^Graphics g]
@@ -719,7 +636,7 @@
   (let [panel (game-panel)
         new-frame (doto (JFrame. (str "Java2D Game Example" initial-velocity))
                     (.setContentPane panel)
-                    (.setSize 800 640)
+                    (.setSize max-x-bound (+ max-y-bound 40))
                     (.setDefaultCloseOperation JFrame/DISPOSE_ON_CLOSE)
                     (.setVisible true))
         timer (Timer. ticks-per-second panel)]

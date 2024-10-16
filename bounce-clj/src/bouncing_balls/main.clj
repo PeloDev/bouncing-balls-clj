@@ -1,5 +1,5 @@
-(ns pelo.firstGameV1
-  (:require [pelo.core :as core])
+(ns bouncing-balls.main
+  (:require [bouncing-balls.core :as core])
   ;; (:require [pelo.playground :as playground])
   (:gen-class))
 

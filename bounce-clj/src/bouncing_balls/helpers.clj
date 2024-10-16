@@ -1,4 +1,4 @@
-(ns pelo.helpers)
+(ns bouncing-balls.helpers)
 
 (defn now [] (new java.util.Date))
 (defn now-unix [] (System/currentTimeMillis))

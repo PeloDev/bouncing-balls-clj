@@ -26,6 +26,3 @@
 /checkouts
 /classes
 /target
-
-# Personal
-bounce-clj/src/bouncing_balls/playground.clj

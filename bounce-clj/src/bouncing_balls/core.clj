@@ -9,11 +9,11 @@
             [bouncing-balls.utils.vectors :refer :all]
             [bouncing-balls.physics.fns :refer :all]))
 
-(def frames-per-second 30)
+(def frames-per-second 60)
 (def ticks-per-second (/ 1000 frames-per-second))
-(def particle-count 3)
-(def particle-size 128)
-(def initial-velocity 6) ;; px per tick
+(def particle-count 8)
+(def particle-size 12)
+(def initial-velocity 5) ;; px per tick
 (def gravitational-force 0.04)
 (def max-x (- 800 particle-size))
 (def min-x 0)
@@ -165,7 +165,8 @@
                                           ;; are-colliding (or
                                           ;;                end-up-touching
                                           ;;                (and start-off-touching are-converging-or-parallel))
-                                          are-colliding (and are-converging-or-parallel (or start-off-touching end-up-touching))]
+                                          are-colliding (and are-converging-or-parallel end-up-touching)
+                                          ]
                                       (if (not are-colliding)
                                         nil
                                         (let [granularity 20

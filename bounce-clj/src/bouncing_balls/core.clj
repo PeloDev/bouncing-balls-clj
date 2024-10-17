@@ -140,6 +140,7 @@
                    collision-index-matrix)]
     (transpose [prev-states new-state])))
 
+;; TODO: break this up into more readable functions...
 ;; We're getting close to the perfect bounce collision. Here are some observation notes:
 ;; - it appears some collisions only bounce one ball and not the other,
 ;;   so it appears there is some dominant factor, maybe the angle or direction of approach or something
@@ -165,10 +166,14 @@
                                           ;; are-colliding (or
                                           ;;                end-up-touching
                                           ;;                (and start-off-touching are-converging-or-parallel))
-                                          are-colliding (and are-converging-or-parallel end-up-touching)
-                                          ]
+                                          are-colliding (and are-converging-or-parallel end-up-touching)]
                                       (if (not are-colliding)
                                         nil
+                                        ;; Now get points of collision (poc)...
+                                        ;; c - current
+                                        ;; o - other
+                                        ;; s - start
+                                        ;; x/y - x/y-coordinate 
                                         (let [granularity 20
                                               [[csx csy] [cex cey]] c-center-line
                                               [[osx osy] [oex oey]] other-state-center-line
@@ -205,6 +210,8 @@
             filtered-collision-point-data (first (filterv #(and (not= nil %)) collision-point-data))]
         (if (nil? filtered-collision-point-data)
           c-next
+          ;; At the point where two balls are colliding, (assumption) the line between their centers
+          ;; is the line along which they exchange forces.
           (let [[[cx-poc cy-poc] [ox-poc oy-poc] other-next-state] filtered-collision-point-data
                 half-p-size (/ particle-size 2)
                 collision-angle-radians (get-radian-angle-between-points [cx-poc cy-poc] [ox-poc oy-poc])

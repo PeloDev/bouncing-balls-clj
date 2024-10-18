@@ -55,6 +55,7 @@
 (defn get-x-y-from-state-transition [[prev-state next-state]]
   [(get-x-y-from-state prev-state) (get-x-y-from-state next-state)])
 
+;; TODO: add debug arrows to see where balls are trying to move
 (defn apply-move [state]
   (let [{:keys [x y angle x-velocity y-velocity]} state
         new-x-velocity (if (nil? x-velocity) (* initial-velocity (Math/cos (Math/toRadians angle))) x-velocity)

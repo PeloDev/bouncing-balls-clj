@@ -63,10 +63,10 @@
                             y-velocity) gravitational-force)
         new-x (+ x new-x-velocity)
         new-y (+ y new-y-velocity)
-        next-state (assoc state :x new-x :y new-y :x-velocity new-x-velocity :y-velocity new-y-velocity) ;; TODO: use new-x-velocity
-        ]
+        next-state (assoc state :x new-x :y new-y :x-velocity new-x-velocity :y-velocity new-y-velocity
+                          :colour (if (and (< (Math/abs new-x-velocity) 0.1) (< (Math/abs new-y-velocity) 0.1))
+                                    Color/RED Color/WHITE))]
     [state next-state]))
-
 
 (defn apply-bounce [[old-state new-state]]
   (let [{old-x :x old-y :y old-angle :angle} old-state
@@ -131,10 +131,13 @@
                                                                           (avg-step :y-velocity avg-state)
                                                                           (avg-step :y-velocity state-row-at-idx)))))
                                                   {:x 0 :y 0 :x-velocity 0 :y-velocity 0}
-                                                  collision-indexes)]
+                                                  collision-indexes)
+                             new-x-vel (move-towards-zero (+ 0 (:x-velocity avg-colliding-state)) bounce-velocity-loss);; TODO: replace 0 with `(:x-velocity state-row)` or revert
+                             new-y-vel (move-towards-zero (+ 0 (:y-velocity avg-colliding-state)) bounce-velocity-loss);; TODO: replace 0 with `(:y-velocity state-row)` or revert
+                             ]
                          (assoc state-row
-                                :x-velocity (move-towards-zero (+ 0 (:x-velocity avg-colliding-state)) bounce-velocity-loss);; TODO: replace 0 with `(:x-velocity state-row)` or revert
-                                :y-velocity (move-towards-zero (+ 0 (:y-velocity avg-colliding-state)) bounce-velocity-loss);; TODO: replace 0 with `(:y-velocity state-row)` or revert
+                                :x-velocity new-x-vel
+                                :y-velocity new-y-vel
                                 :ghost-frames (+ (:ghost-frames state-row) 16)))))
                    next-states
                    collision-index-matrix)]

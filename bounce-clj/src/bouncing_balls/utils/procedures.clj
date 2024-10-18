@@ -18,7 +18,6 @@
         rest-vect-slice (drop (inc idx) vect)
         result (into
                 (map-indexed (fn [i itm]
-                            ;;    [[idx (+ i idx)] (func el itm)]) 
                                {:idxs [idx (+ idx i 1)] :vals (func el itm)})
                              rest-vect-slice)
                 (if (>= (count rest-vect-slice) 2)

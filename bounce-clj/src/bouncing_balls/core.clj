@@ -268,7 +268,7 @@
     (.dispose f) ; Close the existing frame if it exists
     (reset! frame nil))  ; Reset the frame atom
   (let [panel (game-panel)
-        new-frame (doto (JFrame. (str "Java2D Game Example" initial-velocity))
+        new-frame (doto (JFrame. (str "Bouncing Balls!" initial-velocity))
                     (.setContentPane panel)
                     (.setSize 800 640)
                     (.setDefaultCloseOperation JFrame/DISPOSE_ON_CLOSE)

@@ -199,11 +199,7 @@
      [nil nil]
      (range (inc granularity)))))
 
-;; TODO: break this up into more readable functions...
-;; We're getting close to the perfect bounce collision. Here are some observation notes:
-;; - it appears some collisions only bounce one ball and not the other,
-;;   so it appears there is some dominant factor, maybe the angle or direction of approach or something
-;; - balls tend to get stuck together and don't move (not sharing velocities correctly?)
+;; TODO: 
 ;; - balls don't roll of stationary balls, they just stay fixed in place like the point above
 (defn bounce-ball [current-state-transition other-state-transitions]
   (let [c-next (last current-state-transition)]

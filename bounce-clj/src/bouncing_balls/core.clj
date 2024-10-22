@@ -21,7 +21,7 @@
 (def min-y 0)
 (defn random-value [upper-bound] (.nextInt (Random.) upper-bound))
 (defn random-pos-neg [x] (if (= 1 (random-value 2)) x (* x -1)))
-(def bounce-velocity-loss 0.02)
+(def bounce-velocity-loss 0.004)
 
 (def frame (atom nil)) ; Atom to store the frame
 
@@ -219,36 +219,24 @@
                                         :else (let [[curr-poc other-poc] (get-collision-point-of-contact current-line-center other-line-center particle-size)]
                                                 [curr-poc other-poc (last other-state-transition-row)]))))
                                   other-state-transitions)
+            filtered-collision-point-data (filterv #(and (not= nil %)) collision-point-data)
             ;; TODO: don't select first, apply below to all valid collisions
-            filtered-collision-point-data (first (filterv #(and (not= nil %)) collision-point-data))]
-        (if (nil? filtered-collision-point-data)
+            first-collision-point-data (first filtered-collision-point-data)]
+        ;; (cond (> (count filtered-collision-point-data) 0) (println (str "filtered-collision-point-data: " (count filtered-collision-point-data))))
+        (if (nil? first-collision-point-data)
           c-next
           ;; At the point where two balls are colliding, (assumption) the line between their centers
           ;; is the line along which they exchange forces.
-          (let [[[cx-poc cy-poc] [ox-poc oy-poc] other-next-state] filtered-collision-point-data
+          (let [[[cx-poc cy-poc] [ox-poc oy-poc] other-next-state] first-collision-point-data
                 half-p-size (/ particle-size 2)
-                collision-angle-radians (get-radian-angle-between-points [cx-poc cy-poc] [ox-poc oy-poc])
-                c-next-vel-x (:x-velocity c-next)
-                c-next-vel-y (:y-velocity c-next)
-                o-next-vel-x (:x-velocity other-next-state)
-                o-next-vel-y (:y-velocity other-next-state)
-                [c-x-vel-perp c-x-vel-para] (perpendicular-parallel-velocity-decomposition
-                                             c-next-vel-x
-                                             collision-angle-radians)
-                [c-y-vel-perp c-y-vel-para] (perpendicular-parallel-velocity-decomposition
-                                             c-next-vel-y
-                                             collision-angle-radians)
-                [o-x-vel-perp o-x-vel-para] (perpendicular-parallel-velocity-decomposition
-                                             o-next-vel-x
-                                             collision-angle-radians)
-                [o-y-vel-perp o-y-vel-para] (perpendicular-parallel-velocity-decomposition
-                                             o-next-vel-y
-                                             collision-angle-radians)]
+                [[new-vxc new-vyc]] (get-bounce-velocities [cx-poc cy-poc] [ox-poc oy-poc] [(:x-velocity c-next) (:y-velocity c-next)] [(:x-velocity other-next-state) (:y-velocity other-next-state)])]
             (assoc c-next
                    :x (- cx-poc half-p-size)
                    :y (- cy-poc half-p-size)
-                   :x-velocity (move-towards-zero (- c-x-vel-para o-x-vel-perp) bounce-velocity-loss)
-                   :y-velocity (move-towards-zero (- c-y-vel-para o-y-vel-perp) bounce-velocity-loss))))))))
+                  ;;  :x-velocity (move-towards-zero new-vxc bounce-velocity-loss)
+                  ;;  :y-velocity (move-towards-zero new-vyc bounce-velocity-loss)
+                   :x-velocity new-vxc
+                   :y-velocity new-vyc)))))))
 
 (defn apply-collisions [state-transition]
   (let [;; -----
@@ -300,7 +288,7 @@
 
 
 (comment
-
+  (distance-between-points [783.3313642707582 411.2042574420913] [791.0717537407193 401.5289681734521])
   (defn test-stuff [] (let [test-state      (vec (map
                                                   (fn [_]
                                                     {:x (random-value 30)

@@ -174,3 +174,27 @@
         x-range (range x-start (+ x-end x-interval) x-interval)
         y-range (range y-start (+ y-end y-interval) y-interval)]
     (mapv vector x-range y-range)))
+
+(defn get-bounce-velocities [[x1 y1] [x2 y2] [vx1 vy1] [vx2 vy2]]
+  (let [dx (- x2 x1)
+        dy (- y2 y1)
+        magnitude (distance-between-points [x1 y1] [x2 y2])
+
+        [unit-normal-x unit-normal-y] [(/ dx magnitude) (/ dy magnitude)]
+        [tangential-vec-x tangential-vec-y] [(- unit-normal-y) unit-normal-x]
+
+        vx1-normal (* vx1 unit-normal-x)
+        vy1-normal (* vy1 unit-normal-y)
+        vx1-tangential (* vx1 tangential-vec-x)
+        vy1-tangential (* vy1 tangential-vec-y)
+
+        vx2-normal (* vx2 unit-normal-x)
+        vy2-normal (* vy2 unit-normal-y)
+        vx2-tangential (* vx2 tangential-vec-x)
+        vy2-tangential (* vy2 tangential-vec-y)
+
+        new-vx1 (+ vx2-normal vx1-tangential)
+        new-vy1 (+ vy2-normal vy1-tangential)
+        new-vx2 (+ vx1-normal vx2-tangential)
+        new-vy2 (+ vy1-normal vy2-tangential)]
+    [[new-vx1 new-vy1] [new-vx2 new-vy2]]))

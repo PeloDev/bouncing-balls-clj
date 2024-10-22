@@ -11,8 +11,8 @@
 
 (def frames-per-second 60)
 (def ticks-per-second (/ 1000 frames-per-second))
-(def particle-count 8)
-(def particle-size 12)
+(def particle-count 24)
+(def particle-size 8)
 (def initial-velocity 5) ;; px per tick
 (def gravitational-force 0.04)
 (def max-x (- 800 particle-size))
@@ -264,7 +264,7 @@
     (.dispose f) ; Close the existing frame if it exists
     (reset! frame nil))  ; Reset the frame atom
   (let [panel (game-panel)
-        new-frame (doto (JFrame. (str "Bouncing Balls!" initial-velocity))
+        new-frame (doto (JFrame. (str "Bouncing Balls!"))
                     (.setContentPane panel)
                     (.setSize 800 640)
                     (.setDefaultCloseOperation JFrame/DISPOSE_ON_CLOSE)

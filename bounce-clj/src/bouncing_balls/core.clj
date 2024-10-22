@@ -144,6 +144,61 @@
                    collision-index-matrix)]
     (transpose [prev-states new-state])))
 
+(defn get-potential-collision-data [ball-a-state ball-b-state ball-size]
+  (let [a-line (get-x-y-from-state-transition ball-a-state)
+        b-line (get-x-y-from-state-transition ball-b-state)
+        a-line-center (mapv #(get-center-point-from-top-left % ball-size) a-line)
+        b-line-center (mapv #(get-center-point-from-top-left % ball-size) b-line)
+        [a-start a-end] a-line-center
+        [b-start b-end] b-line-center
+        distance-between-starts (distance-between-points a-start b-start)
+        distance-between-ends (distance-between-points a-end b-end)
+        start-off-touching (<= distance-between-starts ball-size)
+        end-up-touching (<= distance-between-ends ball-size)
+        are-converging-or-parallel (<= distance-between-ends distance-between-starts)
+                                            ;; are-colliding (or
+                                            ;;                end-up-touching
+                                            ;;                (and start-off-touching are-converging-or-parallel))
+        are-colliding (and are-converging-or-parallel end-up-touching)]
+    {:are-colliding are-colliding
+     :a-line-center a-line-center
+     :b-line-center b-line-center
+     :start-off-touching start-off-touching
+     :end-up-touching end-up-touching
+     :are-converging-or-parallel are-converging-or-parallel}))
+
+(defn get-collision-point-of-contact [a-line-center b-line-center ball-size]
+  (let [granularity 20
+        [[asx asy] [aex aey]] a-line-center
+        [[bsx bsy] [bex bey]] b-line-center
+        a-dx (- aex asx)
+        a-dy (- aey asy)
+        b-dx (- bex bsx)
+        b-dy (- bey bsy)
+        a-interval-size-x (/ a-dx granularity)
+        a-interval-size-y (/ a-dy granularity)
+        b-interval-size-x (/ b-dx granularity)
+        b-interval-size-y (/ b-dy granularity)]
+    (reduce
+     (fn [[a b] granularity-idx]
+       (cond
+         (or (nil? a) (nil? b)) [[asx asy] [bsx bsy]]
+         :else (let [ax-interval-movement (* a-interval-size-x granularity-idx)
+                     ay-interval-movement (* a-interval-size-y granularity-idx)
+                     bx-interval-movement (* b-interval-size-x granularity-idx)
+                     by-interval-movement (* b-interval-size-y granularity-idx)
+                     a-coord [(+ asx ax-interval-movement) (+ asy ay-interval-movement)]
+                     b-coord [(+ bsx bx-interval-movement) (+ bsy by-interval-movement)]
+                     d0 (distance-between-points a b)
+                     d1 (distance-between-points a-coord b-coord)
+                     d0-psize-proximity (Math/abs (- d0 (+ ball-size 0.3)))
+                     d1-psize-proximity (Math/abs (- d1 (+ ball-size 0.3)))]
+                 (if (< d1-psize-proximity d0-psize-proximity)
+                   [a-coord b-coord]
+                   [a b]))))
+     [nil nil]
+     (range (inc granularity)))))
+
 ;; TODO: break this up into more readable functions...
 ;; We're getting close to the perfect bounce collision. Here are some observation notes:
 ;; - it appears some collisions only bounce one ball and not the other,
@@ -154,61 +209,15 @@
   (let [c-next (last current-state-transition)]
     (if (> (:ghost-frames c-next) 0)
       (assoc c-next :ghost-frames (dec (:ghost-frames c-next)))
-      (let [c-line (get-x-y-from-state-transition current-state-transition)
-            c-center-line (mapv #(get-center-point-from-top-left % particle-size) c-line)
-            [current-start current-end] c-center-line
-            collision-point-data (mapv
+      (let [collision-point-data (mapv
                                   (fn [other-state-transition-row]
-                                    (let [other-state-line (get-x-y-from-state-transition other-state-transition-row)
-                                          other-state-center-line (mapv #(get-center-point-from-top-left % particle-size) other-state-line)
-                                          [other-start other-end] other-state-center-line
-                                          start-distance-to-current (distance-between-points current-start other-start)
-                                          end-distance-to-current (distance-between-points current-end other-end)
-                                          start-off-touching (<= start-distance-to-current particle-size)
-                                          end-up-touching (<= end-distance-to-current particle-size)
-                                          are-converging-or-parallel (<= end-distance-to-current start-distance-to-current)
-                                          ;; are-colliding (or
-                                          ;;                end-up-touching
-                                          ;;                (and start-off-touching are-converging-or-parallel))
-                                          are-colliding (and are-converging-or-parallel end-up-touching)]
-                                      (if (not are-colliding)
-                                        nil
-                                        ;; Now get points of collision (poc)...
-                                        ;; c - current
-                                        ;; o - other
-                                        ;; s - start
-                                        ;; x/y - x/y-coordinate 
-                                        (let [granularity 20
-                                              [[csx csy] [cex cey]] c-center-line
-                                              [[osx osy] [oex oey]] other-state-center-line
-                                              curr-dx (- cex csx)
-                                              curr-dy (- cey csy)
-                                              other-dx (- oex osx)
-                                              other-dy (- oey osy)
-                                              curr-interval-size-x (/ curr-dx granularity)
-                                              curr-interval-size-y (/ curr-dy granularity)
-                                              other-interval-size-x (/ other-dx granularity)
-                                              other-interval-size-y (/ other-dy granularity)
-                                              [curr-poc other-poc] (reduce
-                                                                    (fn [[c o] granularity-idx]
-                                                                      (if (or (nil? c) (nil? o))
-                                                                        [[csx csy] [osx osy]]
-                                                                        (let [cx-interval-movement (* curr-interval-size-x granularity-idx)
-                                                                              cy-interval-movement (* curr-interval-size-y granularity-idx)
-                                                                              ox-interval-movement (* other-interval-size-x granularity-idx)
-                                                                              oy-interval-movement (* other-interval-size-y granularity-idx)
-                                                                              c-coord [(+ csx cx-interval-movement) (+ csy cy-interval-movement)]
-                                                                              o-coord [(+ osx ox-interval-movement) (+ osy oy-interval-movement)]
-                                                                              d0 (distance-between-points c o)
-                                                                              d1 (distance-between-points c-coord o-coord)
-                                                                              d0-psize-proximity (Math/abs (- d0 (+ particle-size 0.3)))
-                                                                              d1-psize-proximity (Math/abs (- d1 (+ particle-size 0.3)))]
-                                                                          (if (< d1-psize-proximity d0-psize-proximity)
-                                                                            [c-coord o-coord]
-                                                                            [c o]))))
-                                                                    [nil nil]
-                                                                    (range (inc granularity)))]
-                                          [curr-poc other-poc (last other-state-transition-row)]))))
+                                    (let [{are-colliding :are-colliding
+                                           current-line-center :a-line-center
+                                           other-line-center :b-line-center} (get-potential-collision-data current-state-transition other-state-transition-row particle-size)]
+                                      (cond
+                                        (not are-colliding) nil
+                                        :else (let [[curr-poc other-poc] (get-collision-point-of-contact current-line-center other-line-center particle-size)]
+                                                [curr-poc other-poc (last other-state-transition-row)]))))
                                   other-state-transitions)
             ;; TODO: don't select first, apply below to all valid collisions
             filtered-collision-point-data (first (filterv #(and (not= nil %)) collision-point-data))]

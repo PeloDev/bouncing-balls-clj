@@ -1,4 +1,4 @@
-(ns bouncing-balls.data.config
+(ns bouncing-balls.data.config.regular
   (:import [java.util Random]))
 
 (def frames-per-second 60)

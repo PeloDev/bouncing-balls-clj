@@ -3,7 +3,7 @@
            [java.awt Graphics Graphics2D Color RenderingHints]
            [java.awt.event ActionListener]
            )
-  (:require [bouncing-balls.data.config :refer :all]
+  (:require [bouncing-balls.data.config.regular :refer :all]
             [bouncing-balls.state-fns.regular :refer :all]))
 
 (def frame (atom nil)) ; Atom to store the frame

@@ -1,6 +1,6 @@
 (ns bouncing-balls.state-fns.regular
   (:import [java.awt Color])
-  (:require [bouncing-balls.data.config :refer :all]
+  (:require [bouncing-balls.data.config.regular :refer :all]
             [bouncing-balls.utils.general :refer :all]
             [bouncing-balls.utils.math :refer :all]
             [bouncing-balls.utils.procedures :refer :all]

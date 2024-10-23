@@ -1,10 +1,10 @@
 (ns bouncing-balls.core
   (:import [javax.swing JFrame JPanel Timer]
            [java.awt Graphics Graphics2D Color RenderingHints]
-           [java.awt.event ActionListener]
-           )
+           [java.awt.event ActionListener])
   (:require [bouncing-balls.data.config.regular :refer :all]
-            [bouncing-balls.state-fns.regular :refer :all]))
+            [bouncing-balls.state-fns.regular :refer :all]
+            [bouncing-balls.utils.general :refer [random-value]]))
 
 (def frame (atom nil)) ; Atom to store the frame
 

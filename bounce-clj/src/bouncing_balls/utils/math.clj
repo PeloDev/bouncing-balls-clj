@@ -48,12 +48,13 @@
   (/ (/ start-num end-num) (Math/abs (/ start-num end-num))))
 
 (defn move-towards-zero [num mv]
-  (if (or (= (int num) 0) (> mv (Math/abs num)))
-    0
-    (let [abs-num (Math/abs num)
-          dir (/ num abs-num)
-          abs-mv (Math/abs mv)
-          abs-diff (- abs-num abs-mv)] (* dir (max abs-diff 0)))))
+  (cond
+    (zero? (round-to-n-places num 4)) 0
+    (> mv (Math/abs num)) (/ num 2)
+    :else (let [abs-num (Math/abs num)
+                dir (/ num abs-num)
+                abs-mv (Math/abs mv)
+                abs-diff (- abs-num abs-mv)] (* dir (max abs-diff 0)))))
 
 (defn degrees-from-y-x [y x] (- 360 (Math/toDegrees (Math/atan2 y x))))
 

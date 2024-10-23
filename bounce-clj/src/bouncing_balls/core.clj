@@ -69,7 +69,7 @@
                                     Color/RED Color/WHITE))]
     [state next-state]))
 
-(defn apply-bounce [[old-state new-state]]
+(defn apply-boundary-bounce [[old-state new-state]]
   (let [{old-x :x old-y :y old-angle :angle} old-state
         {new-x :x new-y :y new-x-velocity :x-velocity new-y-velocity :y-velocity new-angle :angle} new-state
         ;; -----
@@ -229,10 +229,8 @@
             (assoc c-next
                    :x (- cx-poc half-p-size)
                    :y (- cy-poc half-p-size)
-                  ;;  :x-velocity (move-towards-zero new-vxc bounce-velocity-loss)
-                  ;;  :y-velocity (move-towards-zero new-vyc bounce-velocity-loss)
-                   :x-velocity new-vxc
-                   :y-velocity new-vyc)))))))
+                   :x-velocity (move-towards-zero new-vxc (/ bounce-velocity-loss 3))
+                   :y-velocity (move-towards-zero new-vyc (/ bounce-velocity-loss 3)))))))))
 
 (defn apply-collisions [state-transition]
   (let [;; -----
@@ -246,7 +244,7 @@
   (->> states
        (mapv apply-move)
        (apply-collisions)
-       (mapv apply-bounce)
+       (mapv apply-boundary-bounce)
        (mapv last)))
 
 (defn game-panel []

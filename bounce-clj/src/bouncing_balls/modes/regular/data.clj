@@ -1,4 +1,4 @@
-(ns bouncing-balls.data.config.regular)
+(ns bouncing-balls.modes.regular.data)
 
 (def frames-per-second 60)
 (def ticks-per-second (/ 1000 frames-per-second))

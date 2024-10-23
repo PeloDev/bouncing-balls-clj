@@ -180,7 +180,7 @@
         dy (- y2 y1)
         magnitude (distance-between-points [x1 y1] [x2 y2])
 
-        [unit-normal-x unit-normal-y] [(/ dx magnitude) (/ dy magnitude)]
+        [unit-normal-x unit-normal-y] [(safe-divide dx magnitude 1) (safe-divide dy magnitude 1)]
         [tangential-vec-x tangential-vec-y] [(- unit-normal-y) unit-normal-x]
 
         vx1-normal (* vx1 unit-normal-x)

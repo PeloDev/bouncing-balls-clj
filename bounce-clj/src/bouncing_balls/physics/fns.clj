@@ -185,20 +185,18 @@
         b-interval-size-y (/ b-dy granularity)]
     (reduce
      (fn [[a b] granularity-idx]
-       (cond
-         (or (nil? a) (nil? b)) [[asx asy] [bsx bsy]]
-         :else (let [ax-interval-movement (* a-interval-size-x granularity-idx)
-                     ay-interval-movement (* a-interval-size-y granularity-idx)
-                     bx-interval-movement (* b-interval-size-x granularity-idx)
-                     by-interval-movement (* b-interval-size-y granularity-idx)
-                     a-coord [(+ asx ax-interval-movement) (+ asy ay-interval-movement)]
-                     b-coord [(+ bsx bx-interval-movement) (+ bsy by-interval-movement)]
-                     d0 (distance-between-points a b)
-                     d1 (distance-between-points a-coord b-coord)
-                     d0-psize-proximity (Math/abs (- d0 (+ ball-size 0.3)))
-                     d1-psize-proximity (Math/abs (- d1 (+ ball-size 0.3)))]
-                 (if (< d1-psize-proximity d0-psize-proximity)
-                   [a-coord b-coord]
-                   [a b]))))
-     [nil nil]
+       (let [ax-interval-movement (* a-interval-size-x granularity-idx)
+             ay-interval-movement (* a-interval-size-y granularity-idx)
+             bx-interval-movement (* b-interval-size-x granularity-idx)
+             by-interval-movement (* b-interval-size-y granularity-idx)
+             a-coord [(+ asx ax-interval-movement) (+ asy ay-interval-movement)]
+             b-coord [(+ bsx bx-interval-movement) (+ bsy by-interval-movement)]
+             d0 (distance-between-points a b)
+             d1 (distance-between-points a-coord b-coord)
+             d0-psize-proximity (Math/abs (- d0 (+ ball-size 0.3)))
+             d1-psize-proximity (Math/abs (- d1 (+ ball-size 0.3)))]
+         (if (< d1-psize-proximity d0-psize-proximity)
+           [a-coord b-coord]
+           [a b])))
+     [[asx asy] [bsx bsy]]
      (range (inc granularity)))))

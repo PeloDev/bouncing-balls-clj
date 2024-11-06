@@ -193,10 +193,13 @@
              b-coord [(+ bsx bx-interval-movement) (+ bsy by-interval-movement)]
              d0 (distance-between-points a b)
              d1 (distance-between-points a-coord b-coord)
-             d0-psize-proximity (Math/abs (- d0 (+ ball-size 0.3)))
-             d1-psize-proximity (Math/abs (- d1 (+ ball-size 0.3)))]
-         (if (< d1-psize-proximity d0-psize-proximity)
-           [a-coord b-coord]
-           [a b])))
-     [[asx asy] [bsx bsy]]
+             diff-d0-ballsize (- d0 (+ ball-size 0.2))
+             diff-d1-ballsize (- d1 (+ ball-size 0.2))
+             d0-psize-proximity (Math/abs diff-d0-ballsize)
+             d1-psize-proximity (Math/abs diff-d1-ballsize)
+             time-perc-of-collision-in-frame (/ granularity-idx granularity)]
+         (if (and (< d1-psize-proximity d0-psize-proximity) (>= diff-d1-ballsize 0))
+           [a-coord b-coord time-perc-of-collision-in-frame]
+           [a b time-perc-of-collision-in-frame])))
+     [[asx asy] [bsx bsy] 0]
      (range (inc granularity)))))

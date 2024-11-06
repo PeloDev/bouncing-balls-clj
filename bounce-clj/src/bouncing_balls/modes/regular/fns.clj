@@ -23,9 +23,15 @@
         new-x (+ x new-x-velocity)
         new-y (+ y new-y-velocity)
         next-state (assoc state :x new-x :y new-y :x-velocity new-x-velocity :y-velocity new-y-velocity
-                          :colour (if (and (< (Math/abs new-x-velocity) 0.1) (< (Math/abs new-y-velocity) 0.1))
-                                    Color/RED Color/WHITE))]
+                        ;;   :colour (if (and (< (Math/abs new-x-velocity) 0.1) (< (Math/abs new-y-velocity) 0.1))
+                        ;;             Color/GRAY Color/WHITE)
+                          )]
     [state next-state]))
+
+(defn apply-partial-move [x y x-vel y-vel percentage]
+  (let [new-x (+ x (* x-vel percentage))
+        new-y (+ y (* y-vel percentage))]
+    [new-x new-y]))
 
 (defn apply-boundary-bounce [[old-state new-state]]
   (let [{old-x :x old-y :y old-angle :angle} old-state
@@ -92,8 +98,8 @@
                                            other-line-center :b-line-center} (get-potential-collision-data current-state-transition other-state-transition-row particle-size)]
                                       (cond
                                         (not are-colliding) nil
-                                        :else (let [[curr-poc other-poc] (get-collision-point-of-contact current-line-center other-line-center particle-size)]
-                                                [curr-poc other-poc (last other-state-transition-row)]))))
+                                        :else (let [[curr-poc other-poc time-perc-of-collision-in-frame] (get-collision-point-of-contact current-line-center other-line-center particle-size)]
+                                                [curr-poc other-poc (last other-state-transition-row) time-perc-of-collision-in-frame]))))
                                   other-state-transitions)
             filtered-collision-point-data (filterv #(and (not= nil %)) collision-point-data)
             ;; TODO: don't select first, apply below to all valid collisions
@@ -103,12 +109,17 @@
           c-next
           ;; At the point where two balls are colliding, (assumption) the line between their centers
           ;; is the line along which they exchange forces.
-          (let [[[cx-poc cy-poc] [ox-poc oy-poc] other-next-state] first-collision-point-data
+          (let [[[cx-poc cy-poc] [ox-poc oy-poc] other-next-state time-perc-of-collision-in-frame] first-collision-point-data
                 half-p-size (/ particle-size 2)
-                [[new-vxc new-vyc]] (get-bounce-velocities [cx-poc cy-poc] [ox-poc oy-poc] [(:x-velocity c-next) (:y-velocity c-next)] [(:x-velocity other-next-state) (:y-velocity other-next-state)])]
+                [[new-vxc new-vyc]] (get-bounce-velocities
+                                     [cx-poc cy-poc]
+                                     [ox-poc oy-poc]
+                                     [(:x-velocity c-next) (:y-velocity c-next)]
+                                     [(:x-velocity other-next-state) (:y-velocity other-next-state)])
+                [new-x new-y] (apply-partial-move cx-poc cy-poc new-vxc new-vyc (- 1 time-perc-of-collision-in-frame))]
             (assoc c-next
-                   :x (- cx-poc half-p-size)
-                   :y (- cy-poc half-p-size)
+                   :x (- new-x half-p-size)
+                   :y (- new-y half-p-size)
                    :x-velocity (move-towards-zero new-vxc (/ bounce-velocity-loss 3))
                    :y-velocity (move-towards-zero new-vyc (/ bounce-velocity-loss 3)))))))))
 

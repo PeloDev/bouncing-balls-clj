@@ -1,6 +1,6 @@
-(ns platform-runner.core)
+(ns platform-runner.core
+  (:require [platform-runner.canvas :refer [create-frame]]))
 
-(defn foo
-  "I don't do a whole lot."
-  [x]
-  (println x "Hello, World!"))
+(defn start-game []
+  (create-frame))
+

@@ -1,16 +1,19 @@
 (ns platform-runner.canvas
   (:import [javax.swing JFrame JPanel Timer]
            [java.awt Graphics Graphics2D Color RenderingHints]
-           [java.awt.event ActionListener]))
+           [java.awt.event ActionListener])
+  (:require [platform-runner.config :refer [config]]))
 
 (def frame (atom nil)) ; Atom to store the frame
 (def ticks-per-second (/ 1000 60))
+(def canvas-x-boundary (:x-range (:viewport config)))
+(def canvas-y-boundary (:y-range (:viewport config)))
 
 (defn draw-canvas [^Graphics g]
   (let [g2d (doto ^Graphics2D g
               (.setRenderingHint RenderingHints/KEY_ANTIALIASING RenderingHints/VALUE_ANTIALIAS_ON))]
     (.setColor g2d Color/BLACK)
-    (.fillRect g2d 0 0 800 600)))
+    (.fillRect g2d (first canvas-x-boundary) (first canvas-y-boundary) (last canvas-x-boundary) (last canvas-y-boundary))))
 
 (defn game-panel []
   (proxy [JPanel ActionListener] []
@@ -27,7 +30,7 @@
   (let [panel (game-panel)
         new-frame (doto (JFrame. (str "Platform Runner!"))
                     (.setContentPane panel)
-                    (.setSize 800 640)
+                    (.setSize (last canvas-x-boundary) (+ 40 (last canvas-y-boundary)))
                     (.setDefaultCloseOperation JFrame/DISPOSE_ON_CLOSE)
                     (.setVisible true))
         timer (Timer. ticks-per-second panel)]

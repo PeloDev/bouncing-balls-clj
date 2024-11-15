@@ -3,8 +3,8 @@
 
 
 
-(def player (atom {:x (+ 20 (apply max (:x-range (:viewport config))))
-                   :y (+ 20 (apply min (:y-range (:viewport config))))
+(def player (atom {:x (+ (apply min (:x-range (:viewport config))) 20)
+                   :y (- (apply max (:y-range (:viewport config))) 60)
                    :moving-x 0
                    :moving-y 0
                    :crouching false

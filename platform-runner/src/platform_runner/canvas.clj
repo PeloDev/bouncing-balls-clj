@@ -1,13 +1,20 @@
 (ns platform-runner.canvas
   (:import [javax.swing JFrame JPanel Timer]
            [java.awt Graphics Graphics2D Color RenderingHints]
-           [java.awt.event ActionListener])
-  (:require [platform-runner.config :refer [config]]))
+           [java.awt.event ActionListener]
+           [javax.imageio ImageIO]
+           [java.io File])
+  (:require [platform-runner.config :refer [config]]
+            [platform-runner.state :refer [player]]
+            [platform-runner.controls :refer [control-player]]))
 
 (def frame (atom nil)) ; Atom to store the frame
 (def ticks-per-second (/ 1000 60))
 (def canvas-x-boundary (:x-range (:viewport config)))
 (def canvas-y-boundary (:y-range (:viewport config)))
+
+(defn load-image [file-path]
+  (ImageIO/read (File. file-path)))
 
 (defn draw-canvas [^Graphics g]
   (let [g2d (doto ^Graphics2D g
@@ -16,12 +23,14 @@
     (.fillRect g2d (first canvas-x-boundary) (first canvas-y-boundary) (last canvas-x-boundary) (last canvas-y-boundary))))
 
 (defn game-panel []
-  (proxy [JPanel ActionListener] []
-    (paintComponent [^Graphics g]
-      (proxy-super paintComponent g)
-      (draw-canvas g))
-    (actionPerformed [_]
-      (.repaint this))))
+  (let [player-image (load-image "resources/images/basic_stickman_w.png")]
+    (proxy [JPanel ActionListener] []
+      (paintComponent [^Graphics g]
+        (proxy-super paintComponent g)
+        (draw-canvas g)
+        (.drawImage g player-image (:x @player) (:y @player) 60 60 this))
+      (actionPerformed [_]
+        (.repaint this)))))
 
 (defn create-frame []
   (when-let [f @frame]
@@ -50,7 +59,8 @@
                                       java.awt.event.KeyEvent/VK_ENTER "Enter"
                                       java.awt.event.KeyEvent/VK_BACK_SPACE "Back"
                                       java.awt.event.KeyEvent/VK_TAB "Tab"
-                                      (.getKeyChar e)))))
+                                      (.getKeyChar e)))
+                           (swap! player control-player key-code)))
                        (keyReleased [this e])
                        (keyTyped [this e])))
     (.start timer)

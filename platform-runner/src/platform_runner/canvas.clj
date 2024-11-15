@@ -16,6 +16,9 @@
 (defn load-image [file-path]
   (ImageIO/read (File. file-path)))
 
+(defn draw-player-character [g player-image player]
+  (.drawImage g player-image (:x player) (:y player) 60 60 nil))
+
 (defn draw-canvas [^Graphics g]
   (let [g2d (doto ^Graphics2D g
               (.setRenderingHint RenderingHints/KEY_ANTIALIASING RenderingHints/VALUE_ANTIALIAS_ON))]
@@ -28,7 +31,7 @@
       (paintComponent [^Graphics g]
         (proxy-super paintComponent g)
         (draw-canvas g)
-        (.drawImage g player-image (:x @player) (:y @player) 60 60 this))
+        (draw-player-character g player-image @player))
       (actionPerformed [_]
         (swap! player update-player)
         (.repaint this)))))

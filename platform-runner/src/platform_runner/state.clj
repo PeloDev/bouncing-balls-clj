@@ -12,5 +12,10 @@
                    :falling false
                    :health 100
                    :damage-frames 0 ;; how many frames to stun, couting down
-                   :damage-per-frame 0
-                   }))
+                   :damage-per-frame 0}))
+
+(defn update-player [player]
+  (cond
+    (not (zero? (:moving-x player))) (assoc player :x (+ (:x player) (:moving-x player)))
+    (not (zero? (:moving-y player))) (assoc player :y (+ (:y player) (:moving-y player)))
+    :else player))

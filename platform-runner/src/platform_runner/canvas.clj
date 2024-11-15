@@ -5,8 +5,8 @@
            [javax.imageio ImageIO]
            [java.io File])
   (:require [platform-runner.config :refer [config]]
-            [platform-runner.state :refer [player]]
-            [platform-runner.controls :refer [control-player]]))
+            [platform-runner.state :refer [player update-player]]
+            [platform-runner.controls :refer [control-player release-control-player]]))
 
 (def frame (atom nil)) ; Atom to store the frame
 (def ticks-per-second (/ 1000 60))
@@ -30,6 +30,7 @@
         (draw-canvas g)
         (.drawImage g player-image (:x @player) (:y @player) 60 60 this))
       (actionPerformed [_]
+        (swap! player update-player)
         (.repaint this)))))
 
 (defn create-frame []
@@ -61,7 +62,8 @@
                                       java.awt.event.KeyEvent/VK_TAB "Tab"
                                       (.getKeyChar e)))
                            (swap! player control-player key-code)))
-                       (keyReleased [this e])
+                       (keyReleased [this e]
+                         (swap! player release-control-player (.getKeyCode e)))
                        (keyTyped [this e])))
     (.start timer)
     ;; (.start log-timer)

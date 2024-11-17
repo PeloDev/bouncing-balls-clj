@@ -1,23 +1,16 @@
 (ns platform-runner.canvas
   (:import [javax.swing JFrame JPanel Timer]
            [java.awt Graphics Graphics2D Color RenderingHints]
-           [java.awt.event ActionListener]
-           [javax.imageio ImageIO]
-           [java.io File])
+           [java.awt.event ActionListener])
   (:require [platform-runner.config :refer [config]]
-            [platform-runner.state :refer [player update-player]]
-            [platform-runner.controls :refer [control-player release-control-player]]))
+            [platform-runner.game.player.render :refer [draw-player-character]]
+            [platform-runner.game.player.state :refer [player update-player]]
+            [platform-runner.game.player.logic :refer [control-player release-control-player]]))
 
 (def frame (atom nil)) ; Atom to store the frame
 (def ticks-per-second (/ 1000 60))
 (def canvas-x-boundary (:x-range (:viewport config)))
 (def canvas-y-boundary (:y-range (:viewport config)))
-
-(defn load-image [file-path]
-  (ImageIO/read (File. file-path)))
-
-(defn draw-player-character [g player-image player]
-  (.drawImage g player-image (:x player) (:y player) 60 60 nil))
 
 (defn draw-canvas [^Graphics g]
   (let [g2d (doto ^Graphics2D g
@@ -26,15 +19,14 @@
     (.fillRect g2d (first canvas-x-boundary) (first canvas-y-boundary) (last canvas-x-boundary) (last canvas-y-boundary))))
 
 (defn game-panel []
-  (let [player-image (load-image "resources/images/basic_stickman_w.png")]
-    (proxy [JPanel ActionListener] []
-      (paintComponent [^Graphics g]
-        (proxy-super paintComponent g)
-        (draw-canvas g)
-        (draw-player-character g player-image @player))
-      (actionPerformed [_]
-        (swap! player update-player)
-        (.repaint this)))))
+  (proxy [JPanel ActionListener] []
+    (paintComponent [^Graphics g]
+      (proxy-super paintComponent g)
+      (draw-canvas g)
+      (draw-player-character g @player))
+    (actionPerformed [_]
+      (swap! player update-player)
+      (.repaint this))))
 
 (defn create-frame []
   (when-let [f @frame]

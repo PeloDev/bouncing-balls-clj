@@ -1,4 +1,4 @@
-(ns platform-runner.controls)
+(ns platform-runner.game.player.logic)
 
 (def temp-movement-speed 8)
 

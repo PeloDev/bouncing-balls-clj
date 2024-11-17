@@ -5,6 +5,8 @@
 
 (def player (atom {:x (+ (apply min (:x-range (:viewport config))) 20)
                    :y (- (apply max (:y-range (:viewport config))) 60)
+                   :hitbox-width 60
+                   :hitbox-height 60
                    :moving-x 0
                    :moving-y 0
                    :crouching false

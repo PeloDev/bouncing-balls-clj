@@ -4,6 +4,7 @@
            [java.awt.event ActionListener])
   (:require [platform-runner.config :refer [config]]
             [platform-runner.game.player.render :refer [draw-player-character]]
+            [platform-runner.game.environment.render :refer [draw-environment]]
             [platform-runner.game.player.state :refer [player update-player]]
             [platform-runner.game.player.logic :refer [control-player release-control-player]]))
 
@@ -23,6 +24,7 @@
     (paintComponent [^Graphics g]
       (proxy-super paintComponent g)
       (draw-canvas g)
+      (draw-environment g)
       (draw-player-character g @player))
     (actionPerformed [_]
       (swap! player update-player)

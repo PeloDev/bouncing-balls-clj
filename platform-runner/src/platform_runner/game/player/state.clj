@@ -17,13 +17,14 @@
                    :damage-per-frame 0}))
 
 (defn move-player [player]
-  (cond
-    (not (zero? (:moving-x player))) (assoc player :x (+ (:x player) (:moving-x player)))
-    (not (zero? (:moving-y player))) (assoc player :y (+ (:y player) (:moving-y player)))
-    :else player))
+  [player (cond
+            (not (zero? (:moving-x player))) (assoc player :x (+ (:x player) (:moving-x player)))
+            (not (zero? (:moving-y player))) (assoc player :y (+ (:y player) (:moving-y player)))
+            :else player)])
 
 (defn update-player [player]
   (->> player
        (move-player)
        ;; ...
+       (last)
        ))

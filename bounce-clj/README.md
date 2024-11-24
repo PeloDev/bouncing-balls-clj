@@ -1,14 +1,23 @@
 # PeloDev/bouncing-balls
 
-My First Clojure Project. Intended to be some kind of game, I got caught up in the physics. A complete mess that I'm slowly working to organise.
+My First Clojure Project. Intended to be some kind of game, I got caught up in the physics. A project I'm slowly working to organise, and eventually move away from just physics.
+
+## Prerequisites
+
+- [Java 17](https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html) (potentially as low as 8 but not yet been tested)
+- [Clojure](https://clojure.org/guides/install_clojure)
+- [Leiningen](https://leiningen.org/#install)
 
 ## Installation
 
 FIXME: link to download or just Github if I ever get this working
 
-## Usage
+## Run
 
-FIXME: explanation using lein
+To run using leiningen, ensure you're in the `bounce-clj` root directory in your terminal, and run 
+```sh
+lein run
+```
 
 ## Options
 

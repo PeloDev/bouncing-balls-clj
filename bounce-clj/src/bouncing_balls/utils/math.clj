@@ -182,20 +182,23 @@
         magnitude (distance-between-points [x1 y1] [x2 y2])
 
         [unit-normal-x unit-normal-y] [(safe-divide dx magnitude 1) (safe-divide dy magnitude 1)]
-        [tangential-vec-x tangential-vec-y] [(- unit-normal-y) unit-normal-x]
 
         vx1-normal (* vx1 unit-normal-x)
         vy1-normal (* vy1 unit-normal-y)
-        vx1-tangential (* vx1 tangential-vec-x)
-        vy1-tangential (* vy1 tangential-vec-y)
 
         vx2-normal (* vx2 unit-normal-x)
         vy2-normal (* vy2 unit-normal-y)
-        vx2-tangential (* vx2 tangential-vec-x)
-        vy2-tangential (* vy2 tangential-vec-y)
 
-        new-vx1 (+ vx2-normal vx1-tangential)
-        new-vy1 (+ vy2-normal vy1-tangential)
-        new-vx2 (+ vx1-normal vx2-tangential)
-        new-vy2 (+ vy1-normal vy2-tangential)]
+        [tangential-x tangential-y] [(- unit-normal-y) unit-normal-x]
+
+        v1-normal (+ vx1-normal vy1-normal)
+        v1-tangential (+ (* vx1 tangential-x) (* vy1 tangential-y))
+        v2-normal (+ vx2-normal vy2-normal)
+        v2-tangential (+ (* vx2 tangential-x) (* vy2 tangential-y))
+
+        new-vx1 (+ (* v2-normal unit-normal-x) (* v1-tangential tangential-x))
+        new-vy1 (+ (* v2-normal unit-normal-y) (* v1-tangential tangential-y))
+
+        new-vx2 (+ (* v1-normal unit-normal-x) (* v2-tangential tangential-x))
+        new-vy2 (+ (* v1-normal unit-normal-y) (* v2-tangential tangential-y))]
     [[new-vx1 new-vy1] [new-vx2 new-vy2]]))

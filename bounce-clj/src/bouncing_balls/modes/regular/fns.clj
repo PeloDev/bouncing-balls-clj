@@ -99,7 +99,7 @@
                                            other-line-center :b-line-center} (get-potential-collision-data current-state-transition other-state-transition-row particle-size)]
                                       (cond
                                         (not are-colliding) nil
-                                        :else (let [[curr-poc other-poc time-perc-of-collision-in-frame] (get-collision-point-of-contact-2 current-line-center other-line-center particle-size)]
+                                        :else (let [[curr-poc other-poc time-perc-of-collision-in-frame] (get-collision-point-of-contact current-line-center other-line-center particle-size)]
                                                 (if (nil? time-perc-of-collision-in-frame) nil [curr-poc other-poc (last other-state-transition-row) time-perc-of-collision-in-frame])))))
                                   other-state-transitions)
             filtered-collision-point-data (filterv #(and (not= nil %)) collision-point-data)
@@ -121,8 +121,8 @@
             (assoc c-curr
                    :x (- new-x half-p-size)
                    :y (- new-y half-p-size)
-                   :x-velocity new-vxc
-                   :y-velocity new-vyc
+                   :x-velocity (move-towards-zero new-vxc (/ bounce-velocity-loss 3))
+                   :y-velocity (move-towards-zero new-vyc (/ bounce-velocity-loss 3))
                   ;;  :colour Color/ORANGE
                   ;;  :ghost-frames 100000
                    )))))))

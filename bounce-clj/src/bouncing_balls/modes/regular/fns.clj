@@ -88,7 +88,8 @@
 ;; TODO: 
 ;; - balls don't roll of stationary balls, they just stay fixed in place like the point above
 (defn bounce-ball [current-state-transition other-state-transitions]
-  (let [c-next (last current-state-transition)]
+  (let [c-curr (first current-state-transition)
+        c-next (last current-state-transition)]
     (if (> (:ghost-frames c-next) 0)
       (assoc c-next :ghost-frames (dec (:ghost-frames c-next)))
       (let [collision-point-data (mapv
@@ -98,8 +99,8 @@
                                            other-line-center :b-line-center} (get-potential-collision-data current-state-transition other-state-transition-row particle-size)]
                                       (cond
                                         (not are-colliding) nil
-                                        :else (let [[curr-poc other-poc time-perc-of-collision-in-frame] (get-collision-point-of-contact current-line-center other-line-center particle-size)]
-                                                [curr-poc other-poc (last other-state-transition-row) time-perc-of-collision-in-frame]))))
+                                        :else (let [[curr-poc other-poc time-perc-of-collision-in-frame] (get-collision-point-of-contact-2 current-line-center other-line-center particle-size)]
+                                                (if (nil? time-perc-of-collision-in-frame) nil [curr-poc other-poc (last other-state-transition-row) time-perc-of-collision-in-frame])))))
                                   other-state-transitions)
             filtered-collision-point-data (filterv #(and (not= nil %)) collision-point-data)
             ;; TODO: don't select first, apply below to all valid collisions
@@ -117,11 +118,14 @@
                                      [(:x-velocity c-next) (:y-velocity c-next)]
                                      [(:x-velocity other-next-state) (:y-velocity other-next-state)])
                 [new-x new-y] (apply-partial-move cx-poc cy-poc new-vxc new-vyc (- 1 time-perc-of-collision-in-frame))]
-            (assoc c-next
+            (assoc c-curr
                    :x (- new-x half-p-size)
                    :y (- new-y half-p-size)
-                   :x-velocity (move-towards-zero new-vxc (/ bounce-velocity-loss 3))
-                   :y-velocity (move-towards-zero new-vyc (/ bounce-velocity-loss 3)))))))))
+                   :x-velocity new-vxc
+                   :y-velocity new-vyc
+                  ;;  :colour Color/ORANGE
+                  ;;  :ghost-frames 100000
+                   )))))))
 
 (defn apply-collisions [state-transition]
   (let [;; -----
@@ -184,6 +188,8 @@
 
 (comment
   (distance-between-points [783.3313642707582 411.2042574420913] [791.0717537407193 401.5289681734521])
+  (distance-between-points [132.4 132.4] [145.6 145.6])
+  (get-collision-point-of-contact-2 [[129 129] [133 133]] [[149 149] [145 145]] 18)
   (defn test-stuff [] (let [test-state      (vec (map
                                                   (fn [_]
                                                     {:x (random-value 30)

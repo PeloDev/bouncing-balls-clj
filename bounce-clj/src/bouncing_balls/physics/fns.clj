@@ -173,24 +173,24 @@
 
 (defn get-collision-point-of-contact [a-line-center b-line-center ball-size]
   (let [granularity 20
-        [[asx asy] [aex aey]] a-line-center
-        [[bsx bsy] [bex bey]] b-line-center
-        a-dx (- aex asx)
-        a-dy (- aey asy)
-        b-dx (- bex bsx)
-        b-dy (- bey bsy)
-        a-interval-size-x (/ a-dx granularity)
-        a-interval-size-y (/ a-dy granularity)
-        b-interval-size-x (/ b-dx granularity)
-        b-interval-size-y (/ b-dy granularity)]
+        [[a-start-x a-start-y] [a-end-x a-end-y]] a-line-center
+        [[b-start-x b-start-y] [b-end-x b-end-y]] b-line-center
+        a-distance-x (- a-end-x a-start-x)
+        a-distance-y (- a-end-y a-start-y)
+        b-distance-x (- b-end-x b-start-x)
+        b-distance-y (- b-end-y b-start-y)
+        a-interval-size-x (/ a-distance-x granularity)
+        a-interval-size-y (/ a-distance-y granularity)
+        b-interval-size-x (/ b-distance-x granularity)
+        b-interval-size-y (/ b-distance-y granularity)]
     (reduce
      (fn [[a b] granularity-idx]
        (let [ax-interval-movement (* a-interval-size-x granularity-idx)
              ay-interval-movement (* a-interval-size-y granularity-idx)
              bx-interval-movement (* b-interval-size-x granularity-idx)
              by-interval-movement (* b-interval-size-y granularity-idx)
-             a-coord [(+ asx ax-interval-movement) (+ asy ay-interval-movement)]
-             b-coord [(+ bsx bx-interval-movement) (+ bsy by-interval-movement)]
+             a-coord [(+ a-start-x ax-interval-movement) (+ a-start-y ay-interval-movement)]
+             b-coord [(+ b-start-x bx-interval-movement) (+ b-start-y by-interval-movement)]
              d0 (distance-between-points a b)
              d1 (distance-between-points a-coord b-coord)
              diff-d0-ballsize (- d0 (+ ball-size 0.2))
@@ -201,5 +201,30 @@
          (if (and (< d1-psize-proximity d0-psize-proximity) (>= diff-d1-ballsize 0))
            [a-coord b-coord time-perc-of-collision-in-frame]
            [a b time-perc-of-collision-in-frame])))
-     [[asx asy] [bsx bsy] 0]
+     [[a-start-x a-start-y] [b-start-x b-start-y] 0]
      (range (inc granularity)))))
+
+(defn get-collision-point-of-contact-2 [a-line-center b-line-center ball-size]
+  (let [[[a-start-x a-start-y] [a-end-x a-end-y]] a-line-center
+        [[b-start-x b-start-y] [b-end-x b-end-y]] b-line-center
+        a-distance-x (- a-end-x a-start-x)
+        a-distance-y (- a-end-y a-start-y)
+        b-distance-x (- b-end-x b-start-x)
+        b-distance-y (- b-end-y b-start-y)
+        diff-starts-x (- b-start-x a-start-x)
+        diff-distances-x (- b-distance-x a-distance-x)
+        diff-starts-y (- b-start-y a-start-y)
+        diff-distances-y (- b-distance-y a-distance-y)
+        double-diff-distances-of-diff-starts-x (* 2 diff-starts-x diff-distances-x)
+        double-diff-distances-of-diff-starts-y (* 2 diff-starts-y diff-distances-y)
+        sum-of-square-diff-starts (+ (Math/pow diff-starts-x 2) (Math/pow diff-starts-y 2)) ;; a
+        sum-of-double-diff-distances-of-diff-starts (+ double-diff-distances-of-diff-starts-x double-diff-distances-of-diff-starts-y) ;; b
+        sum-of-square-diff-distances (- (+ (Math/pow diff-distances-x 2) (Math/pow diff-distances-y 2)) ball-size) ;; c
+        quadratic-calculation (Math/sqrt (- (Math/pow sum-of-double-diff-distances-of-diff-starts 2) (* 4 sum-of-square-diff-starts sum-of-square-diff-distances)))
+        possible-times-of-collision-quadratic (filterv  #(>= % 0) [(/ (- 0 sum-of-double-diff-distances-of-diff-starts quadratic-calculation) (* 2 sum-of-square-diff-starts))
+                                                                                  (/ (+ (- 0 sum-of-double-diff-distances-of-diff-starts) quadratic-calculation) (* 2 sum-of-square-diff-starts))])
+        possible-times-exist (not= 0 (count possible-times-of-collision-quadratic))
+        collision-time (if possible-times-exist (apply min possible-times-of-collision-quadratic) nil)
+        a-point-of-collision (if possible-times-exist [(+ a-start-x (* a-distance-x collision-time)) (+ a-start-y (* a-distance-y collision-time))] nil)
+        b-point-of-collision (if possible-times-exist [(+ b-start-x (* b-distance-x collision-time)) (+ b-start-y (* b-distance-y collision-time))] nil)]
+    [a-point-of-collision b-point-of-collision collision-time]))

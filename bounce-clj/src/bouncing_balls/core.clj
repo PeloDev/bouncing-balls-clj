@@ -11,13 +11,14 @@
   (let [g2d (doto ^Graphics2D g
               (.setRenderingHint RenderingHints/KEY_ANTIALIASING RenderingHints/VALUE_ANTIALIAS_ON))]
     (.setColor g2d Color/BLACK)
-    (.fillRect g2d 0 0 800 600)))
+    (.fillRect g2d 0 0 (apply max x-range) (apply max y-range))))
 
-(defn draw-particle [^Graphics g {:keys [x y colour]}]
-  (let [g2d (doto ^Graphics2D g
+(defn draw-particle [^Graphics g {:keys [x y colour radius]}]
+  (let [diameter (* 2 radius)
+        g2d (doto ^Graphics2D g
               (.setRenderingHint RenderingHints/KEY_ANTIALIASING RenderingHints/VALUE_ANTIALIAS_ON))]
     (.setColor g2d colour)
-    (.fillOval g2d x y particle-size particle-size))) ;; x y represent top left corner, size is diameter (or width and height)
+    (.fillOval g2d x y diameter diameter))) ;; x y represent top left corner, size is diameter (or width and height)
 
 (defn game-panel []
   (proxy [JPanel ActionListener] []

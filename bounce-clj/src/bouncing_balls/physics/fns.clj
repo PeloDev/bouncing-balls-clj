@@ -171,10 +171,11 @@
             nil
             {:c1 (nth line-1-intervals (:i collision-point-candidate)) :c2 (nth line-2-intervals (:i collision-point-candidate))}))))))
 
-(defn get-collision-point-of-contact [a-line-center b-line-center ball-size]
+(defn get-collision-point-of-contact [a-line-center b-line-center]
   (let [granularity 20
-        [[a-start-x a-start-y] [a-end-x a-end-y]] a-line-center
-        [[b-start-x b-start-y] [b-end-x b-end-y]] b-line-center
+        [[a-start-x a-start-y] [a-end-x a-end-y] a-radius] a-line-center
+        [[b-start-x b-start-y] [b-end-x b-end-y] b-radius] b-line-center
+        sum-of-radii (+ a-radius b-radius)
         a-distance-x (- a-end-x a-start-x)
         a-distance-y (- a-end-y a-start-y)
         b-distance-x (- b-end-x b-start-x)
@@ -193,8 +194,8 @@
              b-coord [(+ b-start-x bx-interval-movement) (+ b-start-y by-interval-movement)]
              d0 (distance-between-points a b)
              d1 (distance-between-points a-coord b-coord)
-             diff-d0-ballsize (- d0 (+ ball-size 0.2))
-             diff-d1-ballsize (- d1 (+ ball-size 0.2))
+             diff-d0-ballsize (- d0 (+ sum-of-radii 0.2))
+             diff-d1-ballsize (- d1 (+ sum-of-radii 0.2))
              d0-psize-proximity (Math/abs diff-d0-ballsize)
              d1-psize-proximity (Math/abs diff-d1-ballsize)
              time-perc-of-collision-in-frame (/ granularity-idx granularity)]

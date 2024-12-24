@@ -34,7 +34,12 @@
     [new-x new-y]))
 
 (defn apply-boundary-bounce [[old-state new-state]]
-  (let [{old-x :x old-y :y old-angle :angle} old-state
+  (let [diameter (* 2 (:radius old-state))
+        min-x (first x-range)
+        max-x (- (last x-range) diameter)
+        min-y (first y-range)
+        max-y (- (last y-range) diameter)
+        {old-x :x old-y :y old-angle :angle} old-state
         {new-x :x new-y :y new-x-velocity :x-velocity new-y-velocity :y-velocity new-angle :angle} new-state
         ;; -----
         is-x-upper-bounce (>= new-x max-x)
@@ -61,17 +66,22 @@
         next-state (assoc new-state :x bounce-x :y bounce-y :x-velocity bounce-x-velocity :y-velocity bounce-y-velocity :angle bounce-angle)]
     [new-state next-state]))
 
-(defn get-potential-collision-data [ball-a-state ball-b-state ball-size]
-  (let [a-line (get-x-y-from-state-transition ball-a-state)
+(defn get-potential-collision-data [ball-a-state ball-b-state]
+  (let [a-radius (:radius (first ball-a-state))
+        a-diameter (* 2 a-radius)
+        b-radius (:radius (first ball-b-state))
+        b-diameter (* 2 b-radius)
+        sum-of-radii (+ a-radius b-radius)
+        a-line (get-x-y-from-state-transition ball-a-state)
         b-line (get-x-y-from-state-transition ball-b-state)
-        a-line-center (mapv #(get-center-point-from-top-left % ball-size) a-line)
-        b-line-center (mapv #(get-center-point-from-top-left % ball-size) b-line)
+        a-line-center (mapv #(get-center-point-from-top-left % a-diameter) a-line)
+        b-line-center (mapv #(get-center-point-from-top-left % b-diameter) b-line)
         [a-start a-end] a-line-center
         [b-start b-end] b-line-center
         distance-between-starts (distance-between-points a-start b-start)
         distance-between-ends (distance-between-points a-end b-end)
-        start-off-touching (<= distance-between-starts ball-size)
-        end-up-touching (<= distance-between-ends ball-size)
+        start-off-touching (<= distance-between-starts sum-of-radii)
+        end-up-touching (<= distance-between-ends sum-of-radii)
         are-converging-or-parallel (<= distance-between-ends distance-between-starts)
                                             ;; are-colliding (or
                                             ;;                end-up-touching
@@ -96,10 +106,12 @@
                                   (fn [other-state-transition-row]
                                     (let [{are-colliding :are-colliding
                                            current-line-center :a-line-center
-                                           other-line-center :b-line-center} (get-potential-collision-data current-state-transition other-state-transition-row particle-size)]
+                                           other-line-center :b-line-center} (get-potential-collision-data current-state-transition other-state-transition-row)
+                                          current-radius (:radius (first current-state-transition))
+                                          other-radius (:radius (first other-state-transition-row))]
                                       (cond
                                         (not are-colliding) nil
-                                        :else (let [[curr-poc other-poc time-perc-of-collision-in-frame] (get-collision-point-of-contact current-line-center other-line-center particle-size)]
+                                        :else (let [[curr-poc other-poc time-perc-of-collision-in-frame] (get-collision-point-of-contact (conj current-line-center current-radius) (conj other-line-center other-radius))]
                                                 (if (nil? time-perc-of-collision-in-frame) nil [curr-poc other-poc (last other-state-transition-row) time-perc-of-collision-in-frame])))))
                                   other-state-transitions)
             filtered-collision-point-data (filterv #(and (not= nil %)) collision-point-data)
@@ -111,7 +123,8 @@
           ;; At the point where two balls are colliding, (assumption) the line between their centers
           ;; is the line along which they exchange forces.
           (let [[[cx-poc cy-poc] [ox-poc oy-poc] other-next-state time-perc-of-collision-in-frame] first-collision-point-data
-                half-p-size (/ particle-size 2)
+                current-radius (:radius c-next)
+                ;; other-radius (:radius other-next-state)
                 [[new-vxc new-vyc]] (get-bounce-velocities
                                      [cx-poc cy-poc]
                                      [ox-poc oy-poc]
@@ -119,8 +132,8 @@
                                      [(:x-velocity other-next-state) (:y-velocity other-next-state)])
                 [new-x new-y] (apply-partial-move cx-poc cy-poc new-vxc new-vyc (- 1 time-perc-of-collision-in-frame))]
             (assoc c-curr
-                   :x (- new-x half-p-size)
-                   :y (- new-y half-p-size)
+                   :x (- new-x current-radius)
+                   :y (- new-y current-radius)
                    :x-velocity (move-towards-zero new-vxc (/ bounce-velocity-loss 3))
                    :y-velocity (move-towards-zero new-vyc (/ bounce-velocity-loss 3))
                   ;;  :colour Color/ORANGE

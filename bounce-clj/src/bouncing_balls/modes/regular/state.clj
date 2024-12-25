@@ -14,7 +14,7 @@
                       :y-velocity nil
                       :colour (Color. (+ 100 (random-value 155)) (+ 100 (random-value 155)) (+ 100 (random-value 155)))
                       :ghost-frames 0
-                      :radius (+ 8 (random-value 24)) 
+                      :radius (+ 8 (random-value 36)) 
                       })
                    (range particle-count)))))
 

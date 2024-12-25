@@ -73,6 +73,9 @@
       nil
       (+ y1 (* diff-ratio dx-given)))))
 
+(defn area-of-circle [radius]
+  (* Math/PI radius radius))
+
 (defn get-x-given-y-on-line [line given-y]
   (let [[[x1 y1] [x2 y2]] line
         dy (- y2 y1)

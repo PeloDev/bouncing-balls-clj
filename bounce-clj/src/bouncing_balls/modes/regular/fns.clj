@@ -129,7 +129,7 @@
                                      [ox-poc oy-poc]
                                      [(:x-velocity c-next) (:y-velocity c-next)]
                                      [(:x-velocity other-next-state) (:y-velocity other-next-state)]
-                                     [(:radius c-next) (:radius other-next-state)]
+                                     [(area-of-circle (:radius c-next)) (area-of-circle (:radius other-next-state))]
                                      )
                 [new-x new-y] (apply-partial-move cx-poc cy-poc new-vxc new-vyc (- 1 time-perc-of-collision-in-frame))]
             (assoc c-curr

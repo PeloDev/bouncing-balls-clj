@@ -94,7 +94,6 @@
      :end-up-touching end-up-touching
      :are-converging-or-parallel are-converging-or-parallel}))
 
-
 ;; TODO: 
 ;; - balls don't roll of stationary balls, they just stay fixed in place like the point above
 (defn bounce-ball [current-state-transition other-state-transitions]
@@ -125,11 +124,13 @@
           (let [[[cx-poc cy-poc] [ox-poc oy-poc] other-next-state time-perc-of-collision-in-frame] first-collision-point-data
                 current-radius (:radius c-next)
                 ;; other-radius (:radius other-next-state)
-                [[new-vxc new-vyc]] (get-bounce-velocities
+                [[new-vxc new-vyc]] (get-bounce-velocities-mass
                                      [cx-poc cy-poc]
                                      [ox-poc oy-poc]
                                      [(:x-velocity c-next) (:y-velocity c-next)]
-                                     [(:x-velocity other-next-state) (:y-velocity other-next-state)])
+                                     [(:x-velocity other-next-state) (:y-velocity other-next-state)]
+                                     [(:radius c-next) (:radius other-next-state)]
+                                     )
                 [new-x new-y] (apply-partial-move cx-poc cy-poc new-vxc new-vyc (- 1 time-perc-of-collision-in-frame))]
             (assoc c-curr
                    :x (- new-x current-radius)

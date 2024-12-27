@@ -49,11 +49,15 @@
                                (mapv (fn [state]
                                        (let [current-x (:x state)
                                              current-y (:y state)
+                                             current-radius (:radius state)
                                              current-x-velocity (:x-velocity state)
-                                             current-y-velocity (:y-velocity state)]
+                                             current-y-velocity (:y-velocity state)
+                                             distance-to-center (distance-between-points [(+ current-x current-radius) (+ current-y current-radius)] weighted-center)
+                                             ;; TODO: find a suitable function for "accelerating-gravitational-force"
+                                             accelerating-gravitational-force (safe-divide gravitational-force (/ (area-of-circle current-radius) distance-to-center) gravitational-force)]
                                          (assoc state
-                                                :x-velocity (+ current-x-velocity (get-converging-movement current-x (first weighted-center) gravitational-force))
-                                                :y-velocity (+ current-y-velocity (get-converging-movement current-y (last weighted-center) gravitational-force))))) new-states))
+                                                :x-velocity (+ current-x-velocity (get-converging-movement current-x (first weighted-center) accelerating-gravitational-force))
+                                                :y-velocity (+ current-y-velocity (get-converging-movement current-y (last weighted-center) accelerating-gravitational-force))))) new-states))
           :else (mapv (fn [state]
                         (let [current-x (:x state)
                               current-y (:y state)

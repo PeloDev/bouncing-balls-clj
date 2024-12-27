@@ -147,55 +147,77 @@
 ;; - balls don't roll of stationary balls, they just stay fixed in place like the point above
 (defn bounce-ball [current-state-transition other-state-transitions]
   (let [c-curr (first current-state-transition)
-        c-next (last current-state-transition)]
-    (if (> (:ghost-frames c-next) 0)
-      (assoc c-next :ghost-frames (dec (:ghost-frames c-next)))
-      (let [collision-point-data (mapv
-                                  (fn [other-state-transition-row]
-                                    (let [{are-colliding :are-colliding
-                                           current-line-center :a-line-center
-                                           other-line-center :b-line-center} (get-potential-collision-data current-state-transition other-state-transition-row)
-                                          current-radius (:radius (first current-state-transition))
-                                          other-radius (:radius (first other-state-transition-row))]
-                                      (cond
-                                        (not are-colliding) nil
-                                        :else (let [[curr-poc other-poc time-perc-of-collision-in-frame] (get-collision-point-of-contact (conj current-line-center current-radius) (conj other-line-center other-radius))]
-                                                (if (nil? time-perc-of-collision-in-frame) nil [curr-poc other-poc (last other-state-transition-row) time-perc-of-collision-in-frame])))))
-                                  other-state-transitions)
-            filtered-collision-point-data (filterv #(and (not= nil %)) collision-point-data)
-            ;; TODO: don't select first, apply below to all valid collisions
-            first-collision-point-data (first filtered-collision-point-data)]
-        ;; (cond (> (count filtered-collision-point-data) 0) (println (str "filtered-collision-point-data: " (count filtered-collision-point-data))))
-        (if (nil? first-collision-point-data)
-          c-next
-          ;; At the point where two balls are colliding, (assumption) the line between their centers
-          ;; is the line along which they exchange forces.
-          (let [[[cx-poc cy-poc] [ox-poc oy-poc] other-next-state time-perc-of-collision-in-frame] first-collision-point-data
-                current-radius (:radius c-next)
-                ;; other-radius (:radius other-next-state)
-                [[new-vxc new-vyc]] (get-bounce-velocities-mass
-                                     [cx-poc cy-poc]
-                                     [ox-poc oy-poc]
-                                     [(:x-velocity c-next) (:y-velocity c-next)]
-                                     [(:x-velocity other-next-state) (:y-velocity other-next-state)]
-                                     [(area-of-circle (:radius c-next)) (area-of-circle (:radius other-next-state))])
-                [new-x new-y] (apply-partial-move cx-poc cy-poc new-vxc new-vyc (- 1 time-perc-of-collision-in-frame))]
-            (assoc c-curr
-                   :x (- new-x current-radius)
-                   :y (- new-y current-radius)
-                   :x-velocity (move-towards-zero new-vxc (/ bounce-velocity-loss 3))
-                   :y-velocity (move-towards-zero new-vyc (/ bounce-velocity-loss 3))
-                  ;;  :colour Color/ORANGE
-                  ;;  :ghost-frames 100000
-                   )))))))
+        c-next (last current-state-transition)
+        collision-point-data (mapv
+                              (fn [other-state-transition-row]
+                                (let [{are-colliding :are-colliding
+                                       current-line-center :a-line-center
+                                       other-line-center :b-line-center} (get-potential-collision-data current-state-transition other-state-transition-row)
+                                      current-radius (:radius (first current-state-transition))
+                                      other-radius (:radius (first other-state-transition-row))]
+                                  (cond
+                                    (not are-colliding) nil
+                                    :else (let [[curr-poc other-poc time-perc-of-collision-in-frame] (get-collision-point-of-contact (conj current-line-center current-radius) (conj other-line-center other-radius))]
+                                            (if (nil? time-perc-of-collision-in-frame) nil [curr-poc other-poc (last other-state-transition-row) time-perc-of-collision-in-frame])))))
+                              other-state-transitions)
+        filtered-collision-point-data (filterv #(and (not= nil %)) collision-point-data)
+                        ;; TODO: don't select first, apply below to all valid collisions
+        first-collision-point-data (first filtered-collision-point-data)]
+    (if (nil? first-collision-point-data)
+      [c-next nil]
+                  ;; At the point where two balls are colliding, (assumption) the line between their centers
+                  ;; is the line along which they exchange forces.
+      (let [random-fusion (and (> absorption-probability 0) (= (random-value absorption-probability) 0))
+            [[cx-poc cy-poc] [ox-poc oy-poc] other-next-state time-perc-of-collision-in-frame] first-collision-point-data
+            current-radius (:radius c-next)
+            other-radius (:radius other-next-state)
+            [[current-new-vxc current-new-vyc] [other-new-vxc other-new-vyc]] (get-bounce-velocities-mass
+                                 [cx-poc cy-poc]
+                                 [ox-poc oy-poc]
+                                 [(:x-velocity c-next) (:y-velocity c-next)]
+                                 [(:x-velocity other-next-state) (:y-velocity other-next-state)]
+                                 [(area-of-circle (:radius c-next)) (area-of-circle (:radius other-next-state))])
+            [new-vxc new-vyc] (if random-fusion
+                      (if (> other-radius current-radius)
+                        [other-new-vxc other-new-vyc]
+                        [current-new-vxc current-new-vyc])
+                                [current-new-vxc current-new-vyc])
+            [point-of-contact-x point-of-contact-y] (if random-fusion
+                                                      (if (> other-radius current-radius)
+                                                        [ox-poc oy-poc]
+                                                        [cx-poc cy-poc])
+                                                      [cx-poc cy-poc])
+            [new-x new-y] (apply-partial-move point-of-contact-x point-of-contact-y new-vxc new-vyc (- 1 time-perc-of-collision-in-frame))]
+        [(assoc c-curr
+                :x (- new-x current-radius)
+                :y (- new-y current-radius)
+                :x-velocity (move-towards-zero new-vxc (/ bounce-velocity-loss 3))
+                :y-velocity (move-towards-zero new-vyc (/ bounce-velocity-loss 3))
+                :radius (if random-fusion
+                          (combine-radii current-radius other-radius)
+                          current-radius)
+                :ghost-frames 1)
+         (if random-fusion (:id other-next-state) nil)]))))
 
 (defn apply-collisions [state-transition]
   (let [;; -----
         [prev-states] (transpose state-transition)
         states-count (count state-transition)
         current-rest-state-pairs (mapv #(extract-nth % state-transition) (range states-count))
-        new-states (mapv #(apply bounce-ball %) current-rest-state-pairs)]
-    (transpose [prev-states new-states])))
+        [new-states randomly-aborbed-state-ids] (reduce
+                                                 (fn [[updated-states randomly-aborbed-state-ids randomly-aborbing-state-ids] state-pair]
+                                                   (if (and
+                                                        (not (.contains randomly-aborbing-state-ids (:id (first (first state-pair)))))
+                                                        (.contains randomly-aborbed-state-ids (:id (first (first state-pair)))))
+                                                     [updated-states randomly-aborbed-state-ids randomly-aborbing-state-ids]
+                                                     (let [[new-state randomly-aborbed-state-id] (apply bounce-ball state-pair)
+                                                           accumulating-randomly-aborbing-state-ids (conj randomly-aborbing-state-ids (:id new-state))
+                                                           accumulating-randomly-aborbed-state-ids (conj randomly-aborbed-state-ids randomly-aborbed-state-id)
+                                                           accumulating-new-states (conj updated-states new-state)]
+                                                       [accumulating-new-states accumulating-randomly-aborbed-state-ids accumulating-randomly-aborbing-state-ids])))
+                                                 [[] [] []]
+                                                 current-rest-state-pairs)]
+    (transpose [prev-states (filterv #(not (.contains randomly-aborbed-state-ids (:id %))) new-states)])))
 
 
 ;; ------------ OTHER FNS --------------

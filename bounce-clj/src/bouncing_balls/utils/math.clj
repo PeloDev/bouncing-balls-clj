@@ -79,6 +79,9 @@
 (defn area-of-circle [radius]
   (* Math/PI radius radius))
 
+(defn combine-radii [radius1 radius2]
+  (Math/sqrt (+ (* radius1 radius1) (* radius2 radius2))))
+
 (defn get-x-given-y-on-line [line given-y]
   (let [[[x1 y1] [x2 y2]] line
         dy (- y2 y1)

@@ -171,35 +171,25 @@
       [c-next nil]
                   ;; At the point where two balls are colliding, (assumption) the line between their centers
                   ;; is the line along which they exchange forces.
-      (let [random-fusion (and (> absorption-probability 0) (= (random-value absorption-probability) 0))
-            [[cx-poc cy-poc] [ox-poc oy-poc] other-next-state time-perc-of-collision-in-frame] first-collision-point-data
+      (let [[[cx-poc cy-poc] [ox-poc oy-poc] other-next-state time-perc-of-collision-in-frame] first-collision-point-data
             current-radius (:radius c-next)
             other-radius (:radius other-next-state)
+            random-fusion (and (> absorption-probability 0) (>= current-radius other-radius) (= (random-value absorption-probability) 0))
             [[current-new-vxc current-new-vyc] [other-new-vxc other-new-vyc]] (get-bounce-velocities-mass
-                                 [cx-poc cy-poc]
-                                 [ox-poc oy-poc]
-                                 [(:x-velocity c-next) (:y-velocity c-next)]
-                                 [(:x-velocity other-next-state) (:y-velocity other-next-state)]
-                                 [(area-of-circle (:radius c-next)) (area-of-circle (:radius other-next-state))])
-            [new-vxc new-vyc] (if random-fusion
-                      (if (> other-radius current-radius)
-                        [other-new-vxc other-new-vyc]
-                        [current-new-vxc current-new-vyc])
-                                [current-new-vxc current-new-vyc])
-            [point-of-contact-x point-of-contact-y] (if random-fusion
-                                                      (if (> other-radius current-radius)
-                                                        [ox-poc oy-poc]
-                                                        [cx-poc cy-poc])
-                                                      [cx-poc cy-poc])
-            [new-x new-y] (apply-partial-move point-of-contact-x point-of-contact-y new-vxc new-vyc (- 1 time-perc-of-collision-in-frame))]
+                                                                               [cx-poc cy-poc]
+                                                                               [ox-poc oy-poc]
+                                                                               [(:x-velocity c-next) (:y-velocity c-next)]
+                                                                               [(:x-velocity other-next-state) (:y-velocity other-next-state)]
+                                                                               [(area-of-circle (:radius c-next)) (area-of-circle (:radius other-next-state))])
+            [new-x new-y] (apply-partial-move cx-poc cy-poc current-new-vxc current-new-vyc (- 1 time-perc-of-collision-in-frame))]
         [(assoc c-curr
                 :x (- new-x current-radius)
                 :y (- new-y current-radius)
-                :x-velocity (move-towards-zero new-vxc (/ bounce-velocity-loss 3))
-                :y-velocity (move-towards-zero new-vyc (/ bounce-velocity-loss 3))
-                :radius (if random-fusion
-                          (combine-radii current-radius other-radius)
-                          current-radius)
+                :x-velocity (move-towards-zero current-new-vxc (/ bounce-velocity-loss 3))
+                :y-velocity (move-towards-zero current-new-vyc (/ bounce-velocity-loss 3))
+                :animate-radius (if random-fusion
+                                  (Math/round (+ (:animate-radius c-curr) (- (combine-radii current-radius other-radius) current-radius)))
+                                  (:animate-radius c-curr))
                 :ghost-frames 1)
          (if random-fusion (:id other-next-state) nil)]))))
 
@@ -223,6 +213,20 @@
                                                  current-rest-state-pairs)]
     (transpose [prev-states (filterv #(not (.contains randomly-aborbed-state-ids (:id %))) new-states)])))
 
+(defn apply-animations [state-transition]
+
+  (let [;; -----
+        [prev-states next-states] (transpose state-transition)]
+    (transpose [prev-states (mapv (fn [state]
+                                    (let [current-radius (:radius state)
+                                          current-animate-radius (:animate-radius state)
+                                          current-animate-radius-direction (* 0.08 (safe-divide current-animate-radius (Math/abs current-animate-radius) 1))
+                                          [new-radius new-animate-radius] (if (zero? current-animate-radius)
+                                                                            [current-radius current-animate-radius]
+                                                                            [(+ current-radius current-animate-radius-direction) (- current-animate-radius current-animate-radius-direction)])]
+                                      (assoc state
+                                             :radius new-radius
+                                             :animate-radius new-animate-radius))) next-states)])))
 
 ;; ------------ OTHER FNS --------------
 

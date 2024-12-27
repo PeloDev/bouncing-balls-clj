@@ -15,7 +15,8 @@
            :y-velocity nil
            :colour (Color. (+ 100 (random-value 155)) (+ 100 (random-value 155)) (+ 100 (random-value 155)))
            :ghost-frames 0
-           :radius (+ min-radius (random-value (- max-radius min-radius)))})
+           :radius (+ min-radius (random-value (- max-radius min-radius)))
+           :animate-radius 0})
         (range ball-count))))
 
 (def states (atom
@@ -29,4 +30,5 @@
        (apply-gravity)
        (apply-collisions)
        (mapv apply-boundary-bounce)
+       (apply-animations)
        (mapv last)))

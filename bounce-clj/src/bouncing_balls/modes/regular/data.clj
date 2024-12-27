@@ -14,6 +14,6 @@
               :dynamic true
               :x 50
               :y Double/POSITIVE_INFINITY
-              :force 0.9 ;; this is a beautiful value for shifting center of gravity, but too fast to demo
-            ;;   :force 0.1
+            ;;   :force 0.9 ;; this is a beautiful value for shifting center of gravity, but too fast to demo
+              :force 0.6
 })

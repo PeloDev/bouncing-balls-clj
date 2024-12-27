@@ -16,10 +16,12 @@
 ;; TODO: add debug arrows to see where balls are trying to move
 (defn apply-move [state]
   (let [{:keys [x y angle x-velocity y-velocity]} state
-        new-x-velocity (if (nil? x-velocity) (* initial-velocity (Math/cos (Math/toRadians angle))) x-velocity)
-        new-y-velocity (+ (if (nil? y-velocity)
-                            (* initial-velocity (Math/sin (Math/toRadians angle)))
-                            y-velocity) gravitational-force)
+        new-x-velocity (if (nil? x-velocity)
+                         (* initial-velocity (Math/cos (Math/toRadians angle)))
+                         x-velocity)
+        new-y-velocity (if (nil? y-velocity)
+                         (* initial-velocity (Math/sin (Math/toRadians angle)))
+                         y-velocity)
         new-x (+ x new-x-velocity)
         new-y (+ y new-y-velocity)
         next-state (assoc state :x new-x :y new-y :x-velocity new-x-velocity :y-velocity new-y-velocity
@@ -27,6 +29,53 @@
                         ;;             Color/GRAY Color/WHITE)
                           )]
     [state next-state]))
+
+(defn get-weighted-center [states]
+  (let [clean-states (filterv #(and (not= nil (:x %)) (not= nil (:y %))) states)
+        weighted-x (reduce + (mapv #(* (area-of-circle (:radius %)) (:x %)) clean-states))
+        weighted-y (reduce + (mapv #(* (area-of-circle (:radius %)) (:y %)) clean-states))
+        total-mass (reduce + (mapv #(area-of-circle (:radius %)) clean-states))]
+    [(/ weighted-x total-mass) (/ weighted-y total-mass)]))
+
+(defn apply-gravity [state-transition]
+  (let [[old-states new-states] (transpose state-transition)]
+    (transpose
+     [old-states
+      (let [gravity-states new-states
+            gravitational-force (:force gravity)]
+        (cond
+          (not (:on gravity)) gravity-states
+          (:dynamic gravity) (let [weighted-center (get-weighted-center new-states)]
+                               (mapv (fn [state]
+                                       (let [current-x (:x state)
+                                             current-y (:y state)
+                                             current-x-velocity (:x-velocity state)
+                                             current-y-velocity (:y-velocity state)]
+                                         (assoc state
+                                                :x-velocity (+ current-x-velocity (get-converging-movement current-x (first weighted-center) gravitational-force))
+                                                :y-velocity (+ current-y-velocity (get-converging-movement current-y (last weighted-center) gravitational-force))))) new-states))
+          :else (mapv (fn [state]
+                        (let [current-x (:x state)
+                              current-y (:y state)
+                              current-x-velocity (:x-velocity state)
+                              current-y-velocity (:y-velocity state)
+                              gravity-x (:x gravity)
+                              gravity-y (:y gravity)
+                              new-x-velocity (cond
+                                               (= gravity-x Double/POSITIVE_INFINITY) (+ current-x-velocity gravitational-force)
+                                               (= gravity-x Double/NEGATIVE_INFINITY) (- current-x-velocity gravitational-force)
+                                               (nil? gravity-x) current-x-velocity
+                                               :else (+
+                                                      current-x-velocity
+                                                      (get-converging-movement current-x gravity-x gravitational-force)))
+                              new-y-velocity (cond
+                                               (= gravity-y Double/POSITIVE_INFINITY) (+ current-y-velocity gravitational-force)
+                                               (= gravity-y Double/NEGATIVE_INFINITY) (- current-y-velocity gravitational-force)
+                                               (nil? gravity-y) current-y-velocity
+                                               :else (+
+                                                      current-y-velocity
+                                                      (get-converging-movement current-y gravity-y gravitational-force)))]
+                          (assoc state :x-velocity new-x-velocity :y-velocity new-y-velocity))) gravity-states)))])))
 
 (defn apply-partial-move [x y x-vel y-vel percentage]
   (let [new-x (+ x (* x-vel percentage))
@@ -129,8 +178,7 @@
                                      [ox-poc oy-poc]
                                      [(:x-velocity c-next) (:y-velocity c-next)]
                                      [(:x-velocity other-next-state) (:y-velocity other-next-state)]
-                                     [(area-of-circle (:radius c-next)) (area-of-circle (:radius other-next-state))]
-                                     )
+                                     [(area-of-circle (:radius c-next)) (area-of-circle (:radius other-next-state))])
                 [new-x new-y] (apply-partial-move cx-poc cy-poc new-vxc new-vyc (- 1 time-perc-of-collision-in-frame))]
             (assoc c-curr
                    :x (- new-x current-radius)

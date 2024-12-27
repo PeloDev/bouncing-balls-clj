@@ -45,7 +45,7 @@
     [perpendicular-component, parallel-component]))
 
 (defn get-direction [start-num end-num]
-  (/ (/ start-num end-num) (Math/abs (/ start-num end-num))))
+  (safe-divide (- end-num start-num) (Math/abs (- end-num start-num)) 0))
 
 (defn move-towards-zero [num mv]
   (cond
@@ -55,6 +55,9 @@
                 dir (/ num abs-num)
                 abs-mv (Math/abs mv)
                 abs-diff (- abs-num abs-mv)] (* dir (max abs-diff 0)))))
+
+(defn get-converging-movement [value target absolute-linear-movement]
+  (* (get-direction value target) absolute-linear-movement))
 
 (defn degrees-from-y-x [y x] (- 360 (Math/toDegrees (Math/atan2 y x))))
 
